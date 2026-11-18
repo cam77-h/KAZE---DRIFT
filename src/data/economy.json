@@ -1,26 +1,59 @@
 {
-  "_note": "Every number that drives money, XP and progression. Tune here; nothing else hard-codes these.",
-  "startingMoney": 15000,
-  "openRoad": {
-    "yenPerPoint": 0.04,
-    "nearMissYen": 50,
-    "zoneStarYen": [1000, 2500, 5000],
-    "trapStarYen": [500, 1500, 3000]
+ "_note": "Every number that drives money, XP and progression. Tune here; nothing else hard-codes these.",
+ "startingMoney": 15000,
+ "openRoad": {
+  "yenPerPoint": 0.075,
+  "nearMissYen": 50,
+  "zoneStarYen": [
+   1000,
+   2500,
+   5000
+  ],
+  "trapStarYen": [
+   500,
+   1500,
+   3000
+  ]
+ },
+ "driftTrack": {
+  "yenPerPoint": 0.055,
+  "medalYen": {
+   "bronze": 2000,
+   "silver": 4000,
+   "gold": 7500,
+   "platinum": 12000
   },
-  "driftTrack": {
-    "yenPerPoint": 0.03,
-    "medalYen": { "bronze": 2000, "silver": 4000, "gold": 7500, "platinum": 12000 },
-    "timeAttackYen": { "bronze": 1500, "silver": 3000, "gold": 6000, "platinum": 10000 },
-    "participationYen": 500
+  "timeAttackYen": {
+   "bronze": 1500,
+   "silver": 3000,
+   "gold": 6000,
+   "platinum": 10000
   },
-  "xp": {
-    "pointsPerXp": 100,
-    "medalXp": { "bronze": 150, "silver": 300, "gold": 600, "platinum": 1000 },
-    "starXp": 120,
-    "levelBase": 1000,
-    "levelExponent": 1.4
+  "participationYen": 500
+ },
+ "xp": {
+  "pointsPerXp": 12,
+  "medalXp": {
+   "bronze": 150,
+   "silver": 300,
+   "gold": 600,
+   "platinum": 1000
   },
-  "levelUp": { "sp": 1, "yen": 2500, "milestoneEvery": 5 },
-  "sellReturn": 0.6,
-  "partTierLevel": { "street": 1, "sport": 3, "race": 8, "pro": 15 }
+  "starXp": 120,
+  "levelBase": 1000,
+  "levelExponent": 1.4
+ },
+ "levelUp": {
+  "sp": 1,
+  "yen": 2500,
+  "milestoneEvery": 5
+ },
+ "sellReturn": 0.6,
+ "partTierLevel": {
+  "street": 1,
+  "sport": 3,
+  "race": 8,
+  "pro": 15
+ },
+ "_tuning": "Tuned by tests/pacing.test.ts (scripted driver \u00d7 0.35 typical-player factor): first part immediately, second car ~39 min, Raiden 34 ~5.7 h."
 }

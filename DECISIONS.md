@@ -65,3 +65,14 @@ Choices made where the spec left room, one line of reasoning each. Newest at the
 - **Minami Reverse is generated** from the Minami data (points reversed, wall sides flipped), so the two layouts can't drift apart.
 - **Port Gymkhana containers are real walls** (capsule colliders) drawn as stacked 12 m shipping containers, with cones at every corner apex.
 - **The Takumi AE's modelled badges** (maker name front and rear, model name on the grille) are removed by deleting the small lettering triangles in three boxes at the car's ends (`strip` in `cars.json`). The other six imported cars were checked front and rear and carry none; the RX-7's `Logos` node stays hidden.
+
+### Sections 6–7: scoring and economy
+
+- **The economy is tuned with a scripted-driver playtest** (`tests/pacing.test.ts`). A drift controller links drifts and transitions for 3 simulated minutes; a "typical player" earns 35% of that rate. To hit the update's pacing targets (first part < 5 min, second car in 30–45 min, Raiden 34 in 4–6 h), the starting values changed:
+  - Open Road ¥/point: 0.04 → 0.075
+  - Drift Track ¥/point: 0.03 → 0.055
+  - XP: 1 per 100 points → 1 per 12 points (the level curve `1000 × n^1.4` is unchanged)
+- **The "second car" pacing target means the Sakura 18 Targa**, after one part. The ¥20,000 Kumo Sedan is a beater, affordable almost at once by design.
+- **The skill tree has 11 perks with 15 ranks**: Style 5 ranks, Money 5, Mechanic 5. Each rank costs 1 SP, and perks unlock top-down within a branch.
+- **Every 5th level is a milestone:** a sticker set unlocks (stored in `save.unlocks.stickers`) with a full-screen celebration. The free part arrives with the Section 8 parts system.
+- **The Garage menu opens the skill tree for now**; the 3D garage (Section 8) will put it in a tab.

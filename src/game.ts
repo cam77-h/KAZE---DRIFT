@@ -24,6 +24,7 @@ import { Hud } from './ui/hud';
 import { Menus, TouchControls } from './ui/menus';
 import { TRACKS, carDef, carName, carPhysics, trackName } from './data';
 import { Flow } from './ui/flow';
+import { Shop } from './ui/shop';
 import { ChainHud } from './ui/chainHud';
 import { SkillChain } from './scoring/skillChain';
 import { TrafficSystem } from './world/traffic';
@@ -73,6 +74,7 @@ export class Game {
   private assistFlags: Record<string, boolean> = { ABS: false, TCS: false, STM: false, DRIFT: false };
   readonly flow: Flow;
   readonly chainHud: ChainHud;
+  readonly shop: Shop;
   chain = new SkillChain();
   private mode: ModeController | null = null;
   private session: SessionConfig | null = null;
@@ -139,8 +141,8 @@ export class Game {
     this.flow = new Flow(this.uiRoot, () => this.save, {
       start: (cfg) => void this.startSession(cfg),
       openSettings: () => this.openSettingsFromMenu(),
-      openGarage: () => this.hud.toast('GARAGE · coming in step 5'),
-      openDealer: () => this.hud.toast('DEALER · coming in step 4'),
+      openGarage: () => this.openShop('skills'),
+      openDealer: () => this.openShop('dealer'),
       openRecords: () => this.hud.toast('RECORDS · coming in step 6'),
       openHowTo: () => {
         this.menus.openSettings('menu', 'controls');
@@ -157,6 +159,25 @@ export class Game {
       if (to === 'menu') this.goMenu('main');
       else this.menus.show(to);
     };
+    this.shop = new Shop(this.uiRoot, () => this.save, {
+      changed: () => {
+        this.persist();
+        this.flow.refreshChips();
+      },
+      back: () => {
+        this.shop.hide();
+        this.flow.show('main');
+      },
+      click: () => this.audio.click(),
+      toast: (t) => this.hud.toast(t),
+      chip: () => {
+        const c = document.createElement('div');
+        c.className = 'profile-chip';
+        const sv = this.save;
+        c.innerHTML = `<span class="lv">LV ${sv.profile.level}</span><b>${formatYen(sv.profile.credits)}</b><span class="sp">${sv.profile.sp} SP</span>`;
+        return c;
+      },
+    });
     this.chainHud = new ChainHud(this.uiRoot);
     this.chainHud.setVisible(false);
     this.objectiveEl = document.createElement('div');
@@ -332,6 +353,10 @@ export class Game {
       cones = new ConeField(scenery.cones, track);
       cones.onKnock = (_c, speed) => {
         this.cam.bump(0.08);
+        if (this.state.is('drive')) {
+          this.chain.wreckage(1);
+          this.save.stats.conesHit++;
+        }
         this.audio.impact(speed * 0.3, 'tire');
       };
       group.add(cones.mesh);
@@ -384,10 +409,18 @@ export class Game {
   }
 
   goMenu(screen: string): void {
+    this.shop?.hide();
     if (!this.state.is('menu')) this.state.go('menu');
     this.menus.show(null);
     this.flow.show(screen);
     if (!this.location) void this.loadLocation('minami', true);
+  }
+
+  openShop(which: 'dealer' | 'skills'): void {
+    if (!this.state.is('menu')) this.state.go('menu');
+    this.flow.show(null);
+    if (which === 'dealer') this.shop.showDealer();
+    else this.shop.showSkills();
   }
 
   private openSettingsFromMenu(): void {
@@ -445,6 +478,11 @@ export class Game {
     this.state.go('menu');
     if (r.newRecord) this.audio.sfx('record');
     this.flow.showResults(r);
+    for (const up of r.levelUps.filter((u) => u.milestone)) {
+      const set = `sticker-set-${up.level}`;
+      if (!this.save.unlocks.stickers.includes(set)) this.save.unlocks.stickers.push(set);
+      this.celebrate(`LEVEL ${up.level}`, `MILESTONE · STICKER SET UNLOCKED · +${formatYen(up.yen)}`);
+    }
   }
 
   /** Quit without rewards. */
@@ -489,6 +527,15 @@ export class Game {
     };
   }
 
+  private celebrate(title: string, sub: string): void {
+    const d = document.createElement('div');
+    d.className = 'celebrate';
+    d.innerHTML = `<b>${title}</b><span>${sub}</span><em>CLICK TO CONTINUE</em>`;
+    d.addEventListener('click', () => d.remove());
+    this.uiRoot.append(d);
+    this.audio.sfx('record');
+  }
+
   private banner(title: string, sub: string, color = '#f2efe6'): void {
     this.bannerEl.innerHTML = `<b style="color:${color}">${title}</b><span>${sub}</span>`;
     this.bannerEl.classList.remove('on');
@@ -510,6 +557,7 @@ export class Game {
       this.scene.remove(this.view.group);
       this.view.dispose();
     }
+    if (this.save.perks.quickShift) spec.gearbox.shiftTime *= 0.7;
     this.vehicle = new Vehicle(spec, this.save.settings.assists);
     this.view = new CarView(this.vehicle, visual, { stance: def.visual.stance ?? 0 });
     this.scene.add(this.view.group);
