@@ -1,0 +1,64 @@
+{
+  "sakura_s15": {
+    "id": "sakura_s15",
+    "physics": {
+      "id": "sakura_s15",
+      "mass": 1250,
+      "cgToFront": 1.25,
+      "cgToRear": 1.35,
+      "trackFront": 1.48,
+      "trackRear": 1.47,
+      "wheelRadius": 0.317,
+      "wheelInertia": 1.1,
+      "inertiaScale": 1.0,
+      "length": 4.45,
+      "width": 1.695,
+      "height": 1.285,
+      "layout": "RWD",
+      "frontTorqueShare": 0,
+      "engine": {
+        "name": "KS20 2.0L turbo I4",
+        "idleRpm": 850,
+        "redlineRpm": 7200,
+        "limiterRpm": 7600,
+        "inertia": 0.17,
+        "torqueCurve": [[800, 150], [1500, 178], [2500, 220], [3500, 268], [4800, 284], [5600, 282], [6400, 272], [7000, 250], [7600, 205]],
+        "engineBrake": 70,
+        "turbo": { "spoolRpm": 2400, "fullBoostRpm": 4200, "lag": 0.55, "boostTorqueShare": 0.38, "maxBoostBar": 0.9 },
+        "sound": "i4turbo",
+        "cylinders": 4
+      },
+      "gearbox": { "ratios": [3.321, 1.902, 1.308, 1.0, 0.759, 0.634], "reverse": 3.382, "final": 4.083, "shiftTime": 0.16, "efficiency": 0.9 },
+      "clutchTorque": 470,
+      "diff": { "type": "lsd15", "preload": 60, "accelLock": 0.35, "decelLock": 0.15 },
+      "suspension": {
+        "springFront": 42000, "springRear": 38000,
+        "bumpFront": 3300, "bumpRear": 3000,
+        "reboundFront": 4400, "reboundRear": 4000,
+        "arbFront": 16000, "arbRear": 9000,
+        "travel": 0.28,
+        "cgHeight": 0.48
+      },
+      "steerLock": 0.62,
+      "brakeTorque": 6400,
+      "brakeBias": 0.68,
+      "handbrakeTorque": 3200,
+      "dragArea": 0.62,
+      "downforceFront": 0.02,
+      "downforceRear": 0.03,
+      "tireFront": "sport",
+      "tireRear": "sport",
+      "falloffFront": 0.5,
+      "falloffRear": 1.0,
+      "gripFront": 1.0,
+      "gripRear": 1.075
+    },
+    "visual": {
+      "model": "s15",
+      "glb": "assets/cars/sakura_s15.glb",
+      "defaultPaint": "#c8102e",
+      "wheel": "kumo6",
+      "wheelDiameterIn": 17
+    }
+  }
+}

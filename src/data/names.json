@@ -1,0 +1,12 @@
+{
+  "_note": "Every display name in the game lives here so a private build can rename things without touching code. All names are fictional.",
+  "game": { "title": "KAZE DRIFT", "kana": "カゼドリフト", "kanji": "風" },
+  "cars": {
+    "sakura_s15": { "name": "Sakura S15", "maker": "Sakura Motors", "tagline": "The car everyone learns to drift in." }
+  },
+  "tracks": {
+    "skidpad": { "name": "Kaze Test Skidpad", "jp": "テストスキッドパッド", "region": "Proving ground" },
+    "minami": { "name": "Minami Drift Park", "jp": "南ドリフトパーク", "region": "Fukushiro Mountains" }
+  },
+  "brands": ["Hoshi Racing", "Kumo Wheels", "Tora Works", "Shin-Kaze Engineering", "Yoru Garage", "Akane Oil", "Hayate Tires"]
+}
