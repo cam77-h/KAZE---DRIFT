@@ -42,3 +42,10 @@ Choices made where the spec left room, one line of reasoning each. Newest at the
 - **The daytime bloom threshold is raised to 6** (night stays at 0.7). Only real light sources and sun glints bloom by day.
 - **Starter car is now the Takumi AE** in a fresh save. The procedural S15 stays as a buyable car.
 - **The old dev car page became `/model-viewer.html`.** It ships with the build so models can be checked on the live site too.
+
+### Section 2: making the cars look good
+
+- **Contact shadow is a blurred canvas-texture decal under each car**, not an extra shadow light. One draw call per car, and it fades when the car is airborne.
+- **SSAO is on at Medium**, as the update asks. Low stays without it for weak laptops and phones.
+- **Stance is applied in `CarView` by dropping only the body** (per-car `visual.stance`, 0–4.5 cm). Wheels stay on the physics contact patch, so tires never sink. Visual camber is a per-axle field the tuning menu will drive.
+- **The textured-paint mask uses a hard edge (85–100% of tolerance).** A soft fade blended the paint toward pink on the AE's gradient palette cells. The AE key is a 0.93 grey with a wide tolerance, so the whole white upper body (palette cells 227–255) changes colour and the black lower half stays black.

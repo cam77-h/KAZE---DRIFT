@@ -16,6 +16,8 @@ export interface CarVisualSpec {
   glb?: ModelDef & { popups?: string };
   defaultPaint: string;
   defaultFinish?: PaintFinish;
+  /** how far the body sits below its stock height (m) so the tires tuck into the arches */
+  stance?: number;
   wheel?: string;
   wheelDiameterIn?: number;
 }

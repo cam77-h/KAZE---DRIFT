@@ -19,14 +19,26 @@ export class CarView {
   private bodyPitch = 0;
   headlightsOn = false;
   night = false;
-  /** extra visual ride-height offset (stance), metres */
+  /** extra visual ride-height offset (stance), metres: the body drops, the wheels stay */
   stance = 0;
+  /** visual camber (rad, positive = top of the wheel leans in), front and rear */
+  camberFront = 0;
+  camberRear = 0;
+  private shadow: THREE.Mesh;
 
   constructor(
     public vehicle: Vehicle,
     public visual: CarVisual,
+    opts: { stance?: number } = {},
   ) {
     const p = vehicle.spec;
+    this.stance = opts.stance ?? 0;
+    // soft contact shadow so the car sits on the road instead of floating over it
+    this.shadow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: contactShadowTexture(), transparent: true, depthWrite: false, opacity: 0.62, color: 0x000000, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -6 }));
+    this.shadow.rotation.x = -Math.PI / 2;
+    this.shadow.renderOrder = 3;
+    this.shadow.scale.set(visual.dims.width * 1.25, visual.dims.length * 1.18, 1);
+    this.group.add(this.shadow);
     // physics origin is the CG; model space has the ground at y = 0
     this.group.add(this.body);
     this.body.add(visual.root);
@@ -48,6 +60,15 @@ export class CarView {
   alignModel(): void {
     const p = this.vehicle.spec;
     this.visual.root.position.set(0, -p.suspension.cgHeight - this.stance, p.cgToFront - this.visual.frontAxleZ);
+    const mid = (p.cgToFront - p.cgToRear) / 2;
+    this.shadow.position.set(0, -p.suspension.cgHeight + 0.025, mid);
+  }
+
+  setStance(drop: number, camberFront = this.camberFront, camberRear = this.camberRear): void {
+    this.stance = drop;
+    this.camberFront = camberFront;
+    this.camberRear = camberRear;
+    this.alignModel();
   }
 
   setPaint(color: string, finish: PaintFinish = 'metallic'): void {
@@ -90,9 +111,14 @@ export class CarView {
         const other = v.wheelLocal(v.wheels[3], this.tmpV2);
         pos.add(other).multiplyScalar(0.5);
       }
-      wm.pivot.rotation.y = -w.steer;
+      const camber = (w.front ? this.camberFront : this.camberRear) * (w.left ? 1 : -1);
+      wm.pivot.rotation.set(0, -w.steer, camber, 'YZX');
       wm.spin.rotation.x = w.spin * wm.spinSign;
     }
+    // the shadow fades as the car leaves the ground
+    const grounded = v.wheels.reduce((n, w) => n + (w.onGround ? 1 : 0), 0);
+    const m = this.shadow.material as THREE.MeshBasicMaterial;
+    m.opacity += ((grounded >= 2 ? 0.62 : 0.15) - m.opacity) * Math.min(1, dt * 8);
 
     const t = v.telemetry;
     const braking = t.brake > 0.05 || (t.forwardSpeed < -0.5 && t.throttle > 0.05);
@@ -107,4 +133,25 @@ export class CarView {
       if (mesh.isMesh) mesh.geometry.dispose();
     });
   }
+}
+
+let shadowTex: THREE.Texture | null = null;
+/** Blurred rounded-rectangle shadow, darkest under the middle of the car. */
+function contactShadowTexture(): THREE.Texture {
+  if (shadowTex) return shadowTex;
+  const c = document.createElement('canvas');
+  c.width = 128;
+  c.height = 256;
+  const g = c.getContext('2d')!;
+  g.filter = 'blur(14px)';
+  g.fillStyle = 'rgba(0,0,0,0.85)';
+  const r = 26;
+  g.beginPath();
+  g.roundRect(26, 30, 76, 196, r);
+  g.fill();
+  g.filter = 'blur(6px)';
+  g.fillStyle = 'rgba(0,0,0,0.5)';
+  g.fillRect(40, 55, 48, 146);
+  shadowTex = new THREE.CanvasTexture(c);
+  return shadowTex;
 }

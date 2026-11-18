@@ -30,8 +30,6 @@ export interface ModelDef {
   plates?: string[];
   headMaterials?: string[];
   tailMaterials?: string[];
-  /** extra body drop (m) so the tires tuck into the arches */
-  stanceDrop?: number;
   /** add a roof panel in body colour (models that ship without one) */
   addRoof?: { y: number; z0: number; z1: number; halfWidth: number };
 }
@@ -199,9 +197,9 @@ export async function loadCarModel(def: ModelDef): Promise<LoadedCarModel> {
   const midX = (centers[0].x + centers[1].x + centers[2].x + centers[3].x) / 4;
   const frontZ = (centers[0].z + centers[1].z) / 2, rearZ = (centers[2].z + centers[3].z) / 2;
   const midZ = (frontZ + rearZ) / 2;
-  const shift = new THREE.Vector3(-midX, -tireBottom - (def.stanceDrop ?? 0), -midZ);
+  const shift = new THREE.Vector3(-midX, -tireBottom, -midZ);
   norm.position.add(shift);
-  for (const c of centers) c.add(shift).add(new THREE.Vector3(0, def.stanceDrop ?? 0, 0));
+  for (const c of centers) c.add(shift);
   root.updateMatrixWorld(true);
 
   // re-parent wheels into pivots

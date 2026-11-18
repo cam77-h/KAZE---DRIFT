@@ -39,8 +39,9 @@ function applyFinish(m: THREE.MeshPhysicalMaterial, color: string, finish: Paint
   const soft = m.userData.lowPoly ? 1 : 0;
   m.color.set(color);
   // real paint never reflects 100%: cap the albedo so white cars don't clip in sunlight
+  // (textured paint keeps a white base colour: its shader recolours the body texels instead)
   const lum = m.color.r * 0.2126 + m.color.g * 0.7152 + m.color.b * 0.0722;
-  if (lum > 0.62) m.color.multiplyScalar(0.62 / lum);
+  if (lum > 0.62 && !m.userData.textured) m.color.multiplyScalar(0.62 / lum);
   m.clearcoat = 1;
   m.clearcoatRoughness = 0.05;
   m.metalness = 0.4;
@@ -119,6 +120,7 @@ export function makePaintMaterial(color: string, finish: PaintFinish = 'metallic
 export function applyPaintToTextured(src: THREE.MeshStandardMaterial, key: [number, number, number], tolerance: number): PaintMaterial {
   const m = new THREE.MeshPhysicalMaterial({ map: src.map, envMapIntensity: 1.15, name: src.name }) as PaintMaterial;
   m.userData.lowPoly = true;
+  m.userData.textured = true;
   const uniforms = {
     paintColor: { value: new THREE.Color(0xffffff) },
     paintKey: { value: new THREE.Color().setRGB(key[0], key[1], key[2], THREE.SRGBColorSpace) },
@@ -134,7 +136,7 @@ export function applyPaintToTextured(src: THREE.MeshStandardMaterial, key: [numb
         {
           vec3 t = diffuseColor.rgb;
           float d = distance(t, paintKey);
-          float mask = 1.0 - smoothstep(paintTol * 0.6, paintTol, d);
+          float mask = 1.0 - smoothstep(paintTol * 0.85, paintTol, d);
           float shade = dot(t, vec3(0.333)) / max(0.05, dot(paintKey, vec3(0.333)));
           diffuseColor.rgb = mix(t, paintColor * clamp(shade, 0.0, 1.2), mask);
         }`,

@@ -301,7 +301,7 @@ export class Game {
       this.view.dispose();
     }
     this.vehicle = new Vehicle(spec, this.save.settings.assists);
-    this.view = new CarView(this.vehicle, visual);
+    this.view = new CarView(this.vehicle, visual, { stance: def.visual.stance ?? 0 });
     this.scene.add(this.view.group);
     this.carKey = key;
   }
