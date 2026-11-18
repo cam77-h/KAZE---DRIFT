@@ -57,6 +57,26 @@
    "name": "Minami Drift Park",
    "jp": "南ドリフトパーク",
    "region": "Fukushiro Mountains"
+  },
+  "minami_rev": {
+   "name": "Minami Drift Park (Reverse)",
+   "jp": "南ドリフトパーク・逆走",
+   "region": "Fukushiro Mountains"
+  },
+  "openroad": {
+   "name": "Open Road",
+   "jp": "オープンロード",
+   "region": "Kawabe · Akagiri · Shiokaze"
+  },
+  "tsukinami": {
+   "name": "Tsukinami Raceway",
+   "jp": "月並サーキット",
+   "region": "Tsukinami Valley"
+  },
+  "port": {
+   "name": "Port Gymkhana",
+   "jp": "港ジムカーナ",
+   "region": "Minato Harbour"
   }
  },
  "brands": [

@@ -55,6 +55,10 @@ export interface TerrainDef {
   /** planar slope added to the terrain: h += tilt[0] * x + tilt[1] * z */
   tilt?: [number, number];
   ground?: SurfaceId;
+  /** smooth hills (cos² falloff) */
+  hills?: { x: number; z: number; r: number; h: number }[];
+  /** coastline: west of x0 the land falls into the sea over `width` metres */
+  sea?: { level: number; x0: number; width: number; depth: number };
 }
 
 export interface FreeWallDef {
@@ -322,6 +326,18 @@ export class Track implements PhysicsWorld {
     const t = this.def.terrain;
     let h = t.base + this.noise.fbm(x / t.scale, z / t.scale, 4) * t.amp;
     if (t.tilt) h += t.tilt[0] * x + t.tilt[1] * z;
+    if (t.hills)
+      for (const hl of t.hills) {
+        const d = Math.hypot(x - hl.x, z - hl.z) / hl.r;
+        if (d < 1) {
+          const c = Math.cos(d * Math.PI * 0.5);
+          h += hl.h * c * c * (0.85 + 0.3 * this.noise.fbm(x / 120 + 3, z / 120 - 7, 3));
+        }
+      }
+    if (t.sea) {
+      const k = smoothstep(t.sea.x0 + t.sea.width * 0.5, t.sea.x0 - t.sea.width * 0.5, x + this.noise.fbm(z / 200, 1.7, 3) * 60);
+      h = h * (1 - k) + (t.sea.level - t.sea.depth) * k;
+    }
     if (t.rise) {
       const d = Math.hypot(x - t.rise.x, z - t.rise.z) - t.rise.r;
       if (d > 0) h += t.rise.height * (1 - Math.exp(-d / t.rise.falloff)) * (0.75 + 0.5 * this.noise.fbm(x / 90 + 17, z / 90 - 3, 3));

@@ -38,7 +38,8 @@ const TIPS = [
 export class Menus {
   private screens: Record<string, HTMLElement> = {};
   private settingsTab = 'graphics';
-  private returnTo: 'title' | 'pause' = 'title';
+  private returnTo: string = 'title';
+  onClose: ((to: string) => void) | null = null;
   private loadingBar!: HTMLElement;
   private loadingText!: HTMLElement;
   private loadName!: HTMLElement;
@@ -96,14 +97,11 @@ export class Menus {
     const logo = el('div', 'logo');
     logo.append(el('div', 'kanji', '風'), el('h1', '', 'KAZE <span>DRIFT</span>'), el('div', 'tag', '峠 · 首都高 · ドリフト — a love letter to the night meets'));
     s.append(logo);
-    const menu = el('div', 'menu');
-    menu.append(
-      this.button('FREE DRIVE', 'フリー走行', () => this.cb.onFreeDrive()),
-      this.button('SETTINGS', '設定', () => this.openSettings('title')),
-      this.button('HOW TO DRIFT', '操作', () => this.openSettings('title', 'controls')),
-    );
-    s.append(menu);
-    s.append(el('div', 'hint', 'PHASE 1 BUILD · v0.2<br><kbd>W A S D</kbd> drive · <kbd>Space</kbd> handbrake · gamepad supported'));
+    const press = el('button', 'press mbtn', 'PRESS ANY KEY<small>スタート</small>');
+    press.style.cssText = 'background:none;width:auto;';
+    press.addEventListener('click', () => this.cb.onFreeDrive());
+    s.append(press);
+    s.append(el('div', 'hint', 'UPDATE 2 · v0.3<br><kbd>W A S D</kbd> drive · <kbd>Space</kbd> handbrake · gamepad supported'));
   }
 
   // ---------------------------------------------------------------- location select
@@ -151,14 +149,14 @@ export class Menus {
     menu.append(
       this.button('RESUME', '再開', () => this.cb.onResume()),
       this.button('RESET CAR', 'リセット', () => this.cb.onReset()),
-      this.button('CHANGE LOCATION', '場所変更', () => this.cb.onChangeLocation()),
+      this.button('END RUN', '終了 · see results', () => this.cb.onChangeLocation()),
       this.button('SETTINGS', '設定', () => this.openSettings('pause')),
-      this.button('QUIT TO TITLE', 'タイトルへ', () => this.cb.onQuit()),
+      this.button('QUIT TO MENU', 'メニューへ · no rewards', () => this.cb.onQuit()),
     );
     s.append(menu);
   }
 
-  openSettings(from: 'title' | 'pause', tab?: string): void {
+  openSettings(from: string, tab?: string): void {
     this.returnTo = from;
     if (tab) this.settingsTab = tab;
     this.show('settings');
@@ -180,7 +178,8 @@ export class Menus {
     const back = el('button', 'sbtn primary', 'DONE');
     back.addEventListener('click', () => {
       this.cb.click();
-      this.show(this.returnTo);
+      if (this.onClose) this.onClose(this.returnTo);
+      else this.show(this.returnTo);
     });
     actions.append(back);
     s.append(actions);

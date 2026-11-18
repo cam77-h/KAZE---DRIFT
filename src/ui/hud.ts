@@ -225,6 +225,24 @@ export class Hud {
     this.mapBase = c;
   }
 
+  /** Draw an activity marker onto the minimap. */
+  addMarker(kind: 'zone' | 'trap' | 'danger' | 'clip' | 'lead', x: number, z: number): void {
+    if (!this.mapBase) return;
+    const g = this.mapBase.getContext('2d')!;
+    const px = (x - this.mapBounds.x) * this.mapScale, pz = (z - this.mapBounds.z) * this.mapScale;
+    const col = kind === 'zone' ? '#e8202f' : kind === 'trap' ? '#7cf3ff' : kind === 'danger' ? '#f39c32' : kind === 'clip' ? '#f6a5c0' : '#f2efe6';
+    const r = kind === 'clip' ? 4 : 9;
+    g.fillStyle = '#0a0f17';
+    g.beginPath();
+    g.arc(px, pz, r + 3, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = col;
+    g.beginPath();
+    if (kind === 'trap') g.rect(px - r, pz - r, r * 2, r * 2);
+    else g.arc(px, pz, r, 0, Math.PI * 2);
+    g.fill();
+  }
+
   private mapAngle = 0;
   update(v: Vehicle, settings: Settings, dt: number, assistActive: Record<string, boolean>): void {
     const t = v.telemetry;

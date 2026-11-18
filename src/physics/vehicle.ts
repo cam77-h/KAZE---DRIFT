@@ -694,6 +694,49 @@ export class Vehicle {
     }
   }
 
+  /**
+   * Collide the car body with a moving box (traffic). Box: centre (cx, cz), heading yaw,
+   * half length hl, half width hw, velocity (vx, vz). Returns the impact speed (0 = no contact).
+   */
+  collideBox(cx: number, cy: number, cz: number, yaw: number, hl: number, hw: number, vx: number, vz: number): number {
+    const s = this.spec;
+    const sx = s.width * 0.5, sz = s.length * 0.5;
+    const c = Math.cos(yaw), sn = Math.sin(yaw);
+    if (Math.abs(this.position.y - cy) > 2.5) return 0;
+    let impact = 0;
+    for (const [px, pz] of PERIM) {
+      const p = this.tmp.set(px * sx, 0, pz * sz).applyQuaternion(this.quaternion).add(this.position);
+      const dx = p.x - cx, dz = p.z - cz;
+      // box-local: forward = (sin yaw, cos yaw), left = (cos yaw, -sin yaw)
+      const lz = dx * sn + dz * c, lx = dx * c - dz * sn;
+      const ox = hw - Math.abs(lx), oz = hl - Math.abs(lz);
+      if (ox <= 0 || oz <= 0) continue;
+      let nx: number, nz: number, depth: number;
+      if (ox < oz) {
+        const sg = Math.sign(lx) || 1;
+        nx = c * sg;
+        nz = -sn * sg;
+        depth = ox;
+      } else {
+        const sg = Math.sign(lz) || 1;
+        nx = sn * sg;
+        nz = c * sg;
+        depth = oz;
+      }
+      this.position.x += nx * depth;
+      this.position.z += nz * depth;
+      // resolve in the box's frame so a moving car hits harder
+      this.velocity.x -= vx;
+      this.velocity.z -= vz;
+      const rel = this.tmp3.set(p.x - this.position.x, 0, p.z - this.position.z);
+      const imp = this.resolveImpulse(rel, this.tmp2.set(nx, 0, nz), 0.25, 0.4);
+      this.velocity.x += vx;
+      this.velocity.z += vz;
+      impact = Math.max(impact, imp);
+    }
+    return impact;
+  }
+
   /** Impulse at body-relative point `rel` along normal n. Returns closing speed. */
   private resolveImpulse(rel: Vector3, n: Vector3, restitution: number, friction: number): number {
     const av = this.angularVelocity;

@@ -5,6 +5,9 @@ import trafficJson from './traffic.json';
 import namesJson from './names.json';
 import minami from './tracks/minami.json';
 import skidpad from './tracks/skidpad.json';
+import openroad from './tracks/openroad.json';
+import tsukinami from './tracks/tsukinami.json';
+import port from './tracks/port.json';
 import type { CarPhysicsSpec } from '../physics/types';
 import type { TrackDef } from '../world/track';
 import type { ModelDef } from '../vehicles/modelLoader';
@@ -89,10 +92,30 @@ export function carTagline(id: string): string {
   return (NAMES.cars as Record<string, { tagline: string }>)[id]?.tagline ?? '';
 }
 
+/** The same layout driven the other way round: road points reversed, spawn turned around. */
+function reversed(def: TrackDef, id: string): TrackDef {
+  const out = structuredClone(def);
+  out.id = id;
+  for (const r of out.roads) {
+    r.points.reverse();
+    // flip each wall's side and fraction range
+    r.walls = (r.walls ?? []).map((w) => ({ ...w, side: w.side === 'left' ? 'right' : 'left', from: 1 - w.to, to: 1 - w.from }));
+  }
+  out.spawn = { ...def.spawn, yaw: def.spawn.yaw + Math.PI };
+  return out;
+}
+
 export const TRACKS: Record<string, TrackDef> = {
   minami: minami as unknown as TrackDef,
+  minami_rev: reversed(minami as unknown as TrackDef, 'minami_rev'),
   skidpad: skidpad as unknown as TrackDef,
+  openroad: openroad as unknown as TrackDef,
+  tsukinami: tsukinami as unknown as TrackDef,
+  port: port as unknown as TrackDef,
 };
+
+/** Drift Track venues in menu order. */
+export const DRIFT_VENUES = ['minami', 'minami_rev', 'tsukinami', 'port'];
 
 export function trackName(id: string): { name: string; jp: string; region: string } {
   return (NAMES.tracks as Record<string, { name: string; jp: string; region: string }>)[id] ?? { name: id, jp: '', region: '' };
