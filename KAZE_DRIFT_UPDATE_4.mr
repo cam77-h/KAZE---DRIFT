@@ -1,0 +1,270 @@
+# KAZE DRIFT — Update 4: Forza-Style Upgrade Shop You Can SEE, Showroom Car Select, Faster Cars, Touge, Multiplayer
+
+This builds on the existing game, `KAZE_DRIFT_SPEC.md` and the earlier update files (`KAZE_DRIFT_UPDATE_2.md`, `KAZE_DRIFT_UPDATE_3.md`). Where they disagree, **this document wins**. All earlier rules still apply: fictional car and part brands only, no real logos, the quality bar, commit after every step, and the game stays playable after every step.
+
+**Work on your own and do not ask me questions.** When something is unclear, choose what a top racing-game designer would, write it in `DECISIONS.md` with one line of reasoning, and keep going.
+
+**If the repo has an image in `reference/` (or I attach one), it's my visual reference for the upgrade screen. Match its layout, mood and level of detail as closely as you can, using our own art.**
+
+Build in this order. Each part has a "Done when" checklist, so don't move on until it passes:
+1. Faster acceleration and a stronger sense of speed (Section 1): it's quick and makes everything else feel better.
+2. Showroom car select (Section 2)
+3. Upgrade shop with Forza Horizon 6-style structure (Section 3)
+4. Visible part installs and the engine bay (Section 4)
+5. Akagiri Touge mountain pass (Section 5)
+6. Multiplayer (Section 6)
+7. Final verification (Section 7)
+
+---
+
+## 1. Make the cars accelerate fast (and feel fast)
+
+Right now acceleration feels slow. Fix the physics first, then the feel.
+
+### 1.1 Physics
+- **Drive force must come from a real drivetrain:** wheel force = engine torque(rpm) × gear ratio × final drive × drivetrain efficiency (~0.85) ÷ wheel radius. Each car gets its own torque curve in `cars.json` (peak torque, rpm of peak, redline, rev limiter).
+- **Short, sporty gearing** with 5–6 gears, so the car pulls hard in 1st–3rd. Shift time ~80 ms (sequential/race gearbox: 40 ms). Auto-shift up at ~95% of redline and down so the engine stays in its power band. Manual shifting is optional.
+- **Remove anything that throttles acceleration artificially.** Delete any "power fades with speed" factor such as `(1 − speed/95)`. Top speed must come from aero drag + gearing only. Reduce rolling resistance to realistic values.
+- **Traction control and assists must not choke the car.** TCS allows a little wheelspin and is fully off when drift assist is on or the player is drifting. The launch: holding throttle at a standstill builds revs, and releasing the brake gives a strong launch.
+- **Turbo boost** builds with rpm and throttle (lag set by turbo size). Show it on a boost gauge.
+- Add a hidden "arcade power" multiplier in settings (default 1.15) as a safety knob, and document it.
+
+### 1.2 Target times (stock cars, flat road, assists default)
+| Car | 0–100 km/h | 0–200 km/h | Top speed |
+|---|---|---|---|
+| Takumi AE (starter) | 6.8 s | — | 200 km/h |
+| Kumo Sedan | 6.5 s | — | 210 km/h |
+| Sakura 18 | 5.8 s | 19 s | 235 km/h |
+| Sento RS | 5.5 s | 18 s | 230 km/h |
+| Hoshi GT | 5.2 s | 16 s | 250 km/h |
+| Kaze R7 '87 | 5.0 s | 15 s | 255 km/h |
+| Sakura S15 | 4.9 s | 15 s | 250 km/h |
+| Raiden 34 | 4.3 s | 13 s | 280 km/h |
+
+**Fully upgraded** cars should reach **2.8–3.6 s** to 100 km/h. Write a vitest **acceleration test** that runs every car (stock and fully upgraded) through a scripted full-throttle launch and fails if any time is more than 10% off its target. Show 0–100 and top speed on the car select screen and in the upgrade shop, computed from this simulation, so the numbers are honest.
+
+### 1.3 Feel of speed
+- Camera FOV widens with speed (up to +12°). Subtle high-frequency camera shake above ~150 km/h, light motion blur (Medium+), and speed lines or wind particles at very high speed.
+- Wind noise and tire roar rise with speed. Each upshift gives a short exhaust "blip" and a camera nudge. Make turbo whoosh and blow-off audible.
+- A short "kick" when launching: the camera pulls back slightly and the rear squats.
+
+**Done when:** the acceleration test passes for all cars, and a 20-second Playwright capture shows the speedometer climbing quickly and smoothly through the gears.
+
+---
+
+## 2. Showroom car select (see the car while you pick it)
+
+Replace any list or text-based car picker with a **3D showroom**, used for "Car Select" before a drive, the **Dealer**, and "My Cars".
+
+- **Scene:** a dark, moody showroom with a polished reflective floor, soft spotlights and a slowly rotating turntable. The selected car sits on the turntable fully rendered: real model, current paint, installed parts, wheels.
+- **Browsing:** left/right arrows (keyboard, gamepad bumpers, swipe on touch) slide to the next car with a quick camera pan. The next and previous cars are preloaded so swapping is instant.
+- **Free look:** drag to orbit, scroll or pinch to zoom, and double-click to reset the view. The idle camera drifts slowly around the car.
+- **Info panel** (like Forza's car cards, in our own style):
+  - Name, year, archetype ("90s rotary coupe"), drivetrain badge (FR / AWD / MR).
+  - **Class badge + rating** (e.g. **B 642**) with class colors: D, C, B, A, S1, S2, R. R is the top class, for race builds.
+  - **Stat bars, 0–10:** Speed, Handling, Acceleration, Launch, Braking, Drift.
+  - **Specs:** power (hp), torque, weight, front weight %, 0–100 km/h, top speed.
+  - Price (Dealer), "OWNED" or "LOCKED – Level 8" state.
+- **Actions:** Select / Buy / Test Drive. In Dealer, a paint-color picker previews the color live on the car before buying.
+- **Filters:** owned, class, drivetrain, price.
+- **Mobile:** works in portrait and landscape, with large touch targets.
+
+**Done when:** you can scroll through every car, each shows as its real 3D model with correct paint and parts, and the stats and 0–100 match the simulation.
+
+---
+
+## 3. Upgrade shop: Forza Horizon 6-style structure
+
+Model the **structure and flow** on Forza Horizon 6's "Upgrades & Tuning", in our own visual style with our own fictional part brands. Do not copy Forza's artwork, logos or text.
+
+### 3.1 How FH6 works (copy this behavior)
+- Upgrading happens from the car's menu under **Upgrades & Tuning**.
+- Parts come in tiers: **Stock → Street → Sport → Race** (some categories only have Stock/Race, some add Rally/Drift).
+- Buying a part **instantly updates the car's performance rating (rating number + class letter) and the stat bars**. The buy screen shows the before → after change and the cost first.
+- **Conversions** (engine swap, aspiration change like a turbo conversion, drivetrain swap) are done first, because they reset some engine/drivetrain parts. Show a warning when a conversion will remove installed parts.
+- **Many tuning sliders are locked until the right Race-tier part is installed:** Race Springs & Dampers unlocks alignment (camber, toe, caster), springs, ride height and damping. Race ARBs unlock anti-roll bar stiffness. Race Brakes unlock brake balance and pressure. A race transmission unlocks gearing. A race differential unlocks diff tuning. Adjustable aero unlocks downforce. Grey out locked sliders with "Install Race Springs to tune".
+- A **Mechanical Balance** meter in the tuning menu (FH6 shows one): ~0.55–0.60 is balanced, lower = understeer, higher = loose rear. Show it live as sliders move.
+- Every part is owned **per car** (buying a turbo for the S15 doesn't give one to the AE).
+
+### 3.2 Categories and parts (all must exist and change the physics)
+
+**Conversion** (do these first):
+- **Engine Swap:** I4 2.0 turbo ("SR-style"), I6 2.6 twin-turbo ("RB-style"), I6 3.0 twin-turbo ("2J-style"), 1.3 twin-rotor ("13B-style"), V6 3.5 ("VQ-style"), V8 5.0, and a joke 1.0 motorcycle engine for the kei/Takumi (screams to 13,000 rpm). Each swap changes weight, weight distribution, torque curve, redline and **sound**.
+- **Aspiration:** naturally aspirated → single turbo (small/medium/large) → twin turbo → supercharger (centrifugal or twin-screw), depending on the engine.
+- **Drivetrain:** RWD / AWD / FWD swaps where sensible.
+- **Body kits:** Stock, Street, Widebody, Drift Missile. A widebody unlocks wider tires.
+
+**Engine** (each with Stock/Street/Sport/Race tiers where it makes sense): Intake · Intake Manifold/Throttle Body · Fuel System · Ignition · Exhaust · Camshaft · Valves · Displacement · Pistons & Compression · Turbo/Supercharger upgrade · Intercooler · Oil & Cooling · Flywheel.
+- Make the trade-offs real and explained:
+  - Race Exhaust is the best value and changes the engine sound.
+  - Race Camshaft adds top-end power but loses low-end torque (harder to modulate in a drift).
+  - Displacement is the biggest power gain and the most expensive.
+  - Bigger turbos mean more lag.
+  - A lighter flywheel revs faster.
+  - Oil & Cooling prevents power fade over long sessions.
+
+**Platform & Handling:** Brakes · Springs & Dampers (Street / Sport / Race / Rally / **Drift**) · Front ARB · Rear ARB · Chassis Reinforcement / Roll Cage · Weight Reduction (Street −30 kg, Sport −80 kg, Race −150 kg) · **Angle Kit** (35° → 50° → 60° → 70° steering lock) · Hydraulic Handbrake.
+
+**Drivetrain:** Clutch · Transmission (Street / Sport / Race 6-speed / Race Sequential) · Driveline · Differential (Street / Sport / Race / **2-way drift** / **Welded**).
+
+**Tires & Rims:**
+- Compounds: Stock / Street / Sport / Semi-Slick / Race Slick / Rally / Snow / **Drift**.
+- Front and rear tire width (several steps).
+- Rim style (12+ designs, front and rear can differ), rim size front/rear, track width front/rear.
+- Tires show a sidewall with our fictional tire brand lettering and **visible wear** that builds up while drifting.
+
+**Aero & Appearance:** Front Bumper/Splitter · Rear Wing (ducktail, low GT, high GT, swan-neck, adjustable race wing) · Side Skirts · Rear Bumper/Diffuser · Hood (stock/vented/carbon) · Canards · Fender flares · Exhaust tips · Window banner · Underglow. Adjustable race aero unlocks a downforce slider and changes grip and top speed for real.
+
+### 3.3 The screens
+- **Upgrade Home:** a grid of big category tiles (Conversion, Engine, Platform & Handling, Drivetrain, Tires & Rims, Aero & Appearance, plus **Tuning** and **Paint & Livery**), each showing how many parts are installed. The car is visible in the 3D garage behind the menu at all times.
+- **Category view:** a list of slots (e.g. Engine → Intake, Exhaust, Turbo…), each showing its installed tier. Selecting a slot opens the **tier cards** (Stock / Street / Sport / Race), each with:
+  - Fictional brand and part name (e.g. "Tora Works Race Exhaust"), a price, and a "Level 8" lock if gated.
+  - A short plain-language effect ("+28 hp, louder, power moves higher in the rev range").
+  - **Hover/focus = live preview:** the part appears on the car (Section 4) and the stat bars show ghost before→after segments in green/red. The rating number ticks up or down, and the class badge changes color if the car would change class.
+- **Buy & Install confirmation:** cost, the new rating/class, the stat changes, the power-to-weight change and the 0–100 change. "Install" plays the install animation (Section 4).
+- **Quick Upgrade:** pick a target class (e.g. "Make it A-class") or a style (Drift / Grip / Balanced), and the game buys the best affordable combination, showing the plan and total cost before you confirm.
+- **Build presets:** save, load and rename builds per car. Builds export as the build code from the original spec.
+- **Always visible:** money, the car's rating/class, and stat bars along the bottom (Speed, Handling, Acceleration, Launch, Braking, Drift) plus the key specs (hp, kg, 0–100).
+
+### 3.4 Rating and class
+- Rating 100–999 is computed from power-to-weight, grip, braking, aero and handling (the same function used everywhere). Classes: **D** 100–400, **C** 401–500, **B** 501–600, **A** 601–700, **S1** 701–800, **S2** 801–900, **R** 901–999.
+- Events can restrict class ("B-class touge battle").
+
+**Done when:** every listed part exists, can be bought and removed, changes the physics (checked with a unit test for at least one part per category), changes the rating/class, and shows correct before→after stats.
+
+---
+
+## 4. See the parts go in: visible installs and the engine bay
+
+The core feature of this update. **Every** part either has a visible 3D change or a clear visual stand-in, and every install is animated. Build parts procedurally (or from Kenney/our own simple models), sized from each car's bounding box, wheel positions and engine-bay anchor so they fit every car.
+
+### 4.1 Garage set-up
+- The car sits on a **two-post hydraulic lift** in our tuning shop (tool walls, tire racks, fluorescent lights, posters for fictional brands, the shop cat).
+- **Camera presets** fly smoothly (~0.6 s, ease-in-out) to:
+  - **Engine Bay:** the hood opens on a hinge animation and the camera looks down into the bay.
+  - **Underside:** the lift raises the car and the camera moves underneath.
+  - **Wheel:** close up on the front-left wheel.
+  - **Rear:** wing, exhaust and diffuser.
+  - **Front:** bumper and splitter.
+  - **Interior:** a view through the door window.
+  - **Full car:** the default orbit.
+- Each slot is tied to a camera preset. Opening a slot moves the camera there automatically.
+- An **X-ray toggle** fades the body to a translucent ghost so hidden parts (turbo plumbing, exhaust route, diff, roll cage) can be seen from the outside.
+
+### 4.2 The engine bay (build a real one)
+When the hood opens there must be a detailed engine bay, not an empty hole:
+- **The engine block matches the installed engine type:** inline-4, inline-6 (long), V6, V8, a compact rotary, and the motorcycle engine. Each has a cam cover with our fictional brand embossed, coil packs/plug wires, belts and pulleys.
+- **Visible components, each changing by tier:**
+  - **Intake:** a stock airbox with a black plastic duct → a Street drop-in filter → a Sport cone filter → a Race carbon intake with a velocity stack.
+  - **Intake manifold/throttle body:** stock cast → polished → a race plenum with a big throttle body.
+  - **Turbo:** a turbo housing (snail shape), compressor and turbine, an oil line, and a **blow-off valve**. Size grows with the tier. Twin turbo shows two. A supercharger shows a blower on top (twin-screw) or a belt-driven centrifugal unit.
+  - **Intercooler:** a front-mount core visible through the bumper opening, with piping running to the engine (silicone couplers in blue or red on Race).
+  - **Exhaust manifold/headers:** stock cast iron → stainless tubular headers (heat-tinted gold/blue on Race).
+  - **Fuel system:** a fuel rail and braided lines (red/blue anodized fittings on Race).
+  - **Ignition:** coil packs whose color changes with tier.
+  - **Oil & Cooling:** an aluminum radiator, an oil cooler at the front, and a catch can.
+  - **Chassis:** a strut tower brace on Sport/Race reinforcement.
+- **Live engine:** the engine idles with a subtle shake and fan spin. A "**Rev**" button (and holding throttle) revs it, so you can **hear** exhaust, turbo, BOV and intake changes right in the garage.
+
+### 4.3 Under the car and elsewhere
+- **Exhaust:** the full route visible from underneath (downpipe → mid pipe → muffler → tips). Tiers change pipe diameter, add a titanium "burnt" finish on Race, and change the tips (single, dual, quad, side exit, bosozoku "takeyari" upswept). Tips are visible from the rear camera.
+- **Transmission and clutch:** a gearbox housing behind the engine. Sequential adds a visible shifter in the interior.
+- **Driveline/differential:** a driveshaft and diff housing. Race diff gets a finned aluminum cover.
+- **Springs & Dampers:** coilovers visible in each wheel well (colored springs by brand and tier). Ride height visibly lowers.
+- **Brakes:** calipers and rotors visible through the spokes. Bigger rotors, 4-piston → 6-piston calipers, painted calipers (choose a color), drilled/slotted rotors on Race.
+- **Tires and rims:** the wheel is unbolted (lug nuts spin off), slides out and the new one slides on. Tire width visibly changes. Sidewall lettering shows the tire brand. Drift tires have white lettering. Camber visibly tilts the wheel.
+- **Weight reduction:** the interior visibly changes: the rear seats disappear (Sport), and carpets and trim disappear for a bare-metal floor (Race). A **roll cage** appears in the cabin, visible through the windows.
+- **Angle kit:** the front wheels sweep to full lock to show the new angle, with an angle readout ("62°").
+- **Hydraulic handbrake:** a vertical handle appears next to the shifter.
+- **Aero and body:** wings, splitters, skirts, canards, flares and hoods bolt on with the animation below.
+
+### 4.4 The install animation (every purchase, ~1.5–2.5 s, skippable)
+1. The camera flies to the slot's preset (hood opens, or car lifts, if needed).
+2. The old part highlights in red, unbolts (bolt-spin particles, wrench "clank" sounds) and lifts away with a fade.
+3. The new part slides into place from a short offset, lands with a "thunk", and the highlight flashes green. A short spark burst for metal parts, a "pssht" for hoses.
+4. The stat bars animate to their new values, the rating counter rolls, and if the class changes the badge flips with a sting sound.
+5. The camera returns to the category view. A "Hear it" prompt appears for engine/exhaust parts, plus a short auto-rev to show off the new sound.
+
+Allow "Install All" from Quick Upgrade to play a fast montage (0.4 s per part).
+
+### 4.5 Visual-only customization
+- Paint and livery from the earlier spec (body, wheels, calipers and window banner colors; finishes: gloss/metallic/pearl/matte/chrome), plus **window decals**: FH6 added painting windows, so support banners on glass.
+- Plates with a fictional Japanese-style plate format.
+
+**Done when:** for every slot in Section 3.2, opening it moves the camera to the right place, hovering a tier shows that tier on the car, and buying it plays the install animation with the new part visible afterward. Take a screenshot of each slot before and after install (`screenshots/update-4/parts/`) and look at them all yourself.
+
+---
+
+## 5. Akagiri Touge: the Japanese mountain pass
+
+A proper Japanese touge, the heart of drift culture. Add it as a **new location** and also connect it into the Open Road loop.
+
+### 5.1 The road
+- About **6–8 km** from the **base town** to the **summit**, ~**450 m** of elevation change. A narrow two-lane road (6–7 m wide) with a dashed center line.
+- **Corners:** 35+ corners, including **10+ hairpins** (switchbacks stacked up the mountainside), fast flowing esses, a long downhill straight into a tight hairpin, a blind crest, a decreasing-radius corner, and one famous "**five consecutive hairpins**" section.
+- **Roadside details:**
+  - Steel guardrails (white posts, some dented), concrete **gutters (mizo)** on the inside of some corners that you can hook a wheel into.
+  - Rock walls with **netting**, chevron arrow boards, **round curve mirrors** on blind corners, kilometer posts, speed signs in Japanese style.
+  - Cliff drops with distant valley views, cedar and maple forest that follows the season.
+- **Landmarks:** a **summit parking lot** (night meet spot with vending machines, a toilet block and a view over the city lights), a **red torii gate and small shrine** halfway up, a short **tunnel**, an **onsen (hot spring) town** at the base with lanterns and wooden buildings, and a closed rest stop.
+- **Night:** sodium streetlights only on some sections, so most of the road is lit by your headlights. Glowing vending machines, and city lights in the valley.
+- **Seasons:** sakura petals in spring, deep green and cicadas in summer, red/orange **momiji** in autumn (the signature look), and snow banks with icy patches in winter (lower grip).
+
+### 5.2 Ways to play it
+- **Downhill and Uphill time attack:** ghost, sector splits, medals.
+- **Touge Battle (1 vs 1):** the classic Japanese cat-and-mouse format. Run 1: you lead and the rival chases; run 2: you swap. The chaser wins by closing the gap and the leader by pulling away. An AI rival has a personality and a signature car. Night by default.
+- **Drift zones** on named sections (e.g. "Five Hairpins", "Shrine Bend", "Tunnel Exit"), scored with the skill chain.
+- **Tandem Chase** from the original spec, following an AI lead car down the mountain.
+- **Free drive** with light oncoming traffic (optional toggle) and the summit meet as a hangout spot.
+- Available in Open Road (connected) and in Drift Track/event selection (as closed-road events).
+
+**Done when:** a scripted downhill run completes without falling through the world, the elevation profile matches, every landmark is present, all four seasons render, and a touge battle can be won and lost.
+
+---
+
+## 6. Multiplayer (online, with friends)
+
+Our game is a static site on GitHub Pages, so multiplayer needs a small hosted realtime service. Use **Supabase Realtime** (Broadcast + Presence), which works directly from the browser and has a free plan. Keep all networking behind a `NetTransport` interface so we can switch to PartyKit/Cloudflare later without touching game code.
+
+### 6.1 What I'll set up (write me a step-by-step in `MULTIPLAYER_SETUP.md`)
+1. Create a free Supabase project.
+2. Copy the **Project URL** and **anon public key** into `src/config/multiplayer.ts` (the anon key is meant to be public; never use the service-role key in the client).
+3. Run the SQL you provide (Section 6.4) in the Supabase SQL editor.
+
+The game must work fine **offline/single-player** if these are missing. Hide the multiplayer menu and show "Multiplayer not configured".
+
+### 6.2 Features
+- **Online menu:** Quick Join (a public room for the selected location), **Create Private Room** (6-character code), Join by Code, and a player name (saved locally, 3–16 chars, profanity-filtered).
+- **Rooms of up to 6 players** (keeps us inside the free plan's message limits). Presence shows who's in the room, their car and their ping. The host is the first player in, and host duty migrates if they leave.
+- **Modes:**
+  - **Free Roam together:** Open Road or Akagiri Touge, everyone drifting and earning normally. See others' cars, names above them, tire smoke and skid marks.
+  - **Tandem Battle (2 players):** lead/chase with the touge battle scoring, then swap.
+  - **Drift Battle:** everyone runs the same Drift Track event at the same time as ghosts. The live leaderboard shows the best score at the end.
+  - **Car Meet:** park in the summit lot or the Daikaku PA, inspect each other's builds (open the other car's spec card), and use emotes (horn, flash lights, rev).
+- **Remote cars use their real model, paint, wheels and visual parts** (sent once as the build code when joining) and play their own engine sound (quieter, with distance falloff).
+- **Ghost cars by default:** no physics collisions between players (they fade slightly when overlapping). Add an optional "Collisions on" toggle for private rooms later, documented in `DECISIONS.md` if it isn't done.
+
+### 6.3 Netcode
+- Send own car state **8 times per second** (drop to 4/s when the car is nearly still, 2/s in menus): position, heading, velocity, yaw rate, steering, throttle/brake, rpm, gear, drift flag. Pack it compactly (quantized numbers in a small array, not verbose JSON).
+- Render remote cars **~150 ms in the past** with interpolation between snapshots, and short extrapolation if packets are late. Snap if the error is huge.
+- Hide sudden jumps, handle disconnects/reconnects gracefully, and clean up rooms when empty.
+- **Respect the free plan's limits** (Supabase Free: 200 concurrent connections, 100 messages per second per project, 2 million messages per month). Keep per-room message rates low, add a project-wide budget guard that lowers send rates if the server warns or disconnects, send events (chain banked, crash, emote) only when they happen, and pause sending when the tab is hidden. Document expected usage in `MULTIPLAYER_SETUP.md`.
+
+### 6.4 Online leaderboards (optional but wanted)
+- A Supabase table `scores(id, created_at, player_name, track, event, score, car, class, build_code)` with Row Level Security: anyone can read, inserts allowed with simple validation (score range, rate limit by a basic check). Provide the SQL.
+- The Records screen gets a **Local / Online** toggle. Clearly mark that online scores are casual and not cheat-proof.
+
+**Done when:** two browser windows (Playwright with two pages) join the same room by code, see each other's cars move smoothly with correct paint/parts, a tandem battle completes with a result on both screens, and the game still works with multiplayer unconfigured.
+
+---
+
+## 7. Final verification
+
+1. `npm run build` passes, all vitest tests pass (physics, acceleration targets, part effects, rating/class, economy, save migration).
+2. **Playwright end-to-end run:** title → car select (scroll 3 cars) → buy a part in the shop (check the install animation plays and the part is visible) → Open Road drive for 20 s → Akagiri Touge downhill for 30 s → touge battle start → multiplayer two-page test. Save screenshots to `screenshots/update-4/` and **look at every screenshot yourself**. Fix anything floating, clipping, mis-scaled, backwards, untextured, ugly or unreadable before finishing.
+3. Hold 60 fps on the Medium preset in the garage (engine bay open) and on the touge at night with traffic.
+4. No real brand names or logos anywhere (check models, part names, decals and UI).
+5. Update `README.md`, `CHANGELOG.md`, `CREDITS.md`, `DECISIONS.md` and `MULTIPLAYER_SETUP.md`, then commit.
+6. If you run out of room, stop at a clean step and write `NEXT_STEPS.md` saying exactly where to continue.
+
+Start with Section 1 now.
