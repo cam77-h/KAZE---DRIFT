@@ -6,8 +6,7 @@ import { makeCurve, magic, tireForces } from '../src/physics/tire';
 import { getTire } from '../src/physics/vehicle';
 import { FlatWorld } from '../src/physics/collision';
 import { Engine, peakPower } from '../src/physics/drivetrain';
-import cars from '../src/data/cars.json';
-import type { CarPhysicsSpec } from '../src/physics/types';
+import { carPhysics } from '../src/data';
 
 const kmh = (v: number) => v * 3.6;
 const deg = (r: number) => (r * 180) / Math.PI;
@@ -50,7 +49,7 @@ describe('tire model', () => {
 });
 
 describe('drivetrain', () => {
-  const spec = (cars as Record<string, { physics: CarPhysicsSpec }>).sakura_s15.physics;
+  const spec = carPhysics('sakura_s15');
   it('stock S15 makes about 245 hp', () => {
     const p = peakPower(spec.engine);
     expect(p.hp).toBeGreaterThan(230);

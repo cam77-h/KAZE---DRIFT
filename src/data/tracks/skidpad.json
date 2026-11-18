@@ -1,0 +1,61 @@
+{
+ "id": "skidpad",
+ "size": 520,
+ "spawn": {
+  "x": -75,
+  "z": 0,
+  "yaw": 0
+ },
+ "terrain": {
+  "base": -0.4,
+  "amp": 1.6,
+  "scale": 90,
+  "seed": 3,
+  "rise": {
+   "x": 0,
+   "z": 0,
+   "r": 180,
+   "height": 28,
+   "falloff": 90
+  },
+  "ground": "grass"
+ },
+ "roads": [],
+ "pads": [
+  {
+   "id": "pad",
+   "shape": "circle",
+   "x": 0,
+   "z": 0,
+   "r": 112,
+   "y": 0,
+   "surface": "asphalt",
+   "blend": 14
+  }
+ ],
+ "walls": [
+  {
+   "type": "tire",
+   "circle": {
+    "x": 0,
+    "z": 0,
+    "r": 118
+   },
+   "height": 1.1,
+   "radius": 0.5
+  }
+ ],
+ "scenery": {
+  "theme": "skidpad",
+  "circles": [
+   24,
+   46
+  ],
+  "cones": true,
+  "trees": {
+   "count": 900,
+   "minDist": 125,
+   "radius": 250
+  }
+ }
+}
