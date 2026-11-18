@@ -2,8 +2,8 @@
  "id": "skidpad",
  "size": 520,
  "spawn": {
-  "x": -75,
-  "z": 0,
+  "x": -95,
+  "z": -50,
   "yaw": 0
  },
  "terrain": {

@@ -292,9 +292,20 @@ function newProjection(): Projection {
 }
 
 /** The physical world of one location: roads + pads + terrain + walls. */
+export interface WallLine {
+  points: [number, number, number][];
+  type: WallMaterial;
+  height: number;
+  closed: boolean;
+  /** which side of the line faces the road (+1 = left of the polyline direction) */
+  face: 1 | -1;
+}
+
 export class Track implements PhysicsWorld {
   roads: Road[];
   walls = new WallSet();
+  /** wall polylines, kept for the renderer */
+  wallLines: WallLine[] = [];
   wetness = 0;
   private proj = newProjection();
   private best = newProjection();
@@ -432,6 +443,7 @@ export class Track implements PhysicsWorld {
         }
         const r = w.type === 'tire' ? 0.45 : w.type === 'guardrail' ? 0.2 : 0.35;
         this.walls.addPolyline(pts, r, w.height ?? 1.0, w.type);
+        this.wallLines.push({ points: pts, type: w.type, height: w.height ?? 1.0, closed: false, face: side > 0 ? -1 : 1 });
       }
     }
     for (const w of this.def.walls ?? []) {
@@ -446,9 +458,11 @@ export class Track implements PhysicsWorld {
           pts.push([x, this.height(x, z), z]);
         }
         this.walls.addPolyline(pts, r, w.height ?? 1.0, w.type, true);
+        this.wallLines.push({ points: pts, type: w.type, height: w.height ?? 1.0, closed: true, face: 1 });
       } else if (w.points) {
         const pts = w.points.map((p) => [p[0], p.length > 2 ? p[1] : this.height(p[0], p[1]), p.length > 2 ? p[2] : p[1]] as [number, number, number]);
         this.walls.addPolyline(pts, r, w.height ?? 1.0, w.type, w.closed);
+        this.wallLines.push({ points: pts, type: w.type, height: w.height ?? 1.0, closed: !!w.closed, face: 1 });
       }
     }
   }
