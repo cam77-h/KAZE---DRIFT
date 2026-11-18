@@ -78,6 +78,13 @@ export class PostStack {
     this.composer.addPass(this.smaa);
   }
 
+  /** draw a different scene (the showroom) through the same post stack */
+  setScene(scene: THREE.Scene, camera: THREE.Camera): void {
+    this.render.scene = scene;
+    this.setCamera(camera);
+    (this.gtao as unknown as { scene: THREE.Scene }).scene = scene;
+  }
+
   setCamera(camera: THREE.Camera): void {
     this.render.camera = camera;
     (this.gtao as unknown as { camera: THREE.Camera }).camera = camera;

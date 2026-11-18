@@ -40,7 +40,7 @@ export function sellValue(save: SaveData, car: OwnedCar): number {
   return Math.round(car.paid * r);
 }
 
-export function buyCar(save: SaveData, carId: string): OwnedCar | string {
+export function buyCar(save: SaveData, carId: string, paint?: { body: string; finish: OwnedCar['paint']['finish'] }): OwnedCar | string {
   const def = CARS[carId];
   if (!def) return 'Unknown car.';
   if (save.profile.level < def.level) return `Reach level ${def.level} first.`;
@@ -51,7 +51,7 @@ export function buyCar(save: SaveData, carId: string): OwnedCar | string {
     carId,
     parts: {},
     tune: {},
-    paint: { body: def.visual.defaultPaint, finish: def.visual.defaultFinish ?? 'metallic', wheels: '#c9ccd1', calipers: '#d21f2b' },
+    paint: { body: paint?.body ?? def.visual.defaultPaint, finish: paint?.finish ?? def.visual.defaultFinish ?? 'metallic', wheels: '#c9ccd1', calipers: '#d21f2b' },
     livery: [],
     mileage: 0,
     paid: def.price,

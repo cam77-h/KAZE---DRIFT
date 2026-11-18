@@ -33,6 +33,7 @@ export interface CarDef {
   level: number;
   archetype: string;
   signature: string;
+  year?: number;
 }
 
 export interface TrafficDef {

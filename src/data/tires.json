@@ -76,5 +76,18 @@
   "loadSensitivity": 0.08,
   "rolling": 0.012,
   "smoke": "#d6dde4"
+ },
+ "slick": {
+  "id": "slick",
+  "name": "Race Slick",
+  "mu": 1.5,
+  "longRatio": 1.0,
+  "peakSlipAngle": 0.11,
+  "peakSlipRatio": 0.09,
+  "falloff": 0.3,
+  "shapeE": -0.1,
+  "loadSensitivity": 0.07,
+  "rolling": 0.0105,
+  "smoke": "#ececec"
  }
 }

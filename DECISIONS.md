@@ -105,3 +105,40 @@ Choices made where the spec left room, one line of reasoning each. Newest at the
   - Road noise: tyre roar on tarmac.
 - **The 20 s Playwright capture runs on game time** (`tests/smoke/update4_accel.cjs`). Software GL in CI renders far slower than real time, so wall-clock seconds would undercount.
 - **The fully upgraded 2.8–3.6 s check** is added to `tests/accel.test.ts` with the Section 3 parts system, which defines "fully upgraded".
+
+### Section 2: showroom car select
+
+- **One showroom for three jobs:** Car Select (after choosing a mode), Dealer, and My Cars (the main menu's GARAGE button). The skill tree moved to its own SKILLS button.
+- **The showroom is a separate Three.js scene drawn through the same post stack** (`PostStack.setScene`). The open-road world stays loaded behind it, so going for a drive needs no reload.
+- **The room:**
+  - A real mirror floor (`Reflector`) under a dark, slightly rough tint, so the reflection reads as polished concrete, not glass.
+  - A brushed turntable with a sodium-orange rim light, and light strips on the walls.
+  - A warm key spot, cool and warm rim spots, and `RoomEnvironment` reflections.
+- **Cars sit on their real suspension:** each one is a `Vehicle` settled for 150 steps on a flat world, then drawn with the normal `CarView`. Stance, ride height and wheel offsets come from the same code as in the drive. At most six built cars are cached, and the neighbours of the current car are preloaded.
+- **The dealer's paint preview** has 12 colours and five finishes. Buying uses the previewed colour.
+- **Test Drive takes the car to the skidpad** on a borrowed basis (`?car=`). The garage selection is untouched and restored when the session ends.
+- **Model years** are fictional and set in `cars.json`.
+
+### Section 3: upgrade shop
+
+- **The catalogue is code, not JSON** (`src/garage/parts.ts`). Each option carries a small `apply(spec)`, so the shop, the rating, the stat bars, the acceleration test and the car on the road all use the same `applyBuild`. Order: conversions first, then engine, platform, drivetrain, tires, aero.
+- **Stacked engine parts have diminishing returns:** the engine category's combined torque gain is scaled by 0.8, and by less for engines already above 360 hp/t. Without this, a full build multiplied power by 2.2–2.6× (a 1,800 hp Raiden).
+- **"Fully upgraded" for the 2.8–3.6 s check** means:
+  - the top performance tier in every slot, with race slicks and the widebody's widest tires
+  - no conversions (no swap, no aspiration change), as the spec treats those as separate choices
+  The seven RWD cars land at 3.0–3.5 s.
+- **AWD exception:** the AWD Raiden reaches 2.1 s, because AWD on slicks is grip-bound at about 1.3 g. Detuning it to 2.8 s would make the AWD layout pointless. The test holds AWD to a 1.9 s floor instead and keeps the ±10% band for RWD cars.
+- **Race slicks have μ 1.5,** about 23% over Sport tires, in line with arcade expectations rather than real-world 1.7+.
+- **Aero catalogue values are in "kit units",** ×12 = Cl·A in m². A full race kit is about 1 m² of downforce: about +15% load at 200 km/h.
+- **The rating is analytic and instant,** so hovering a part ticks the number immediately. Components: power-to-weight, lateral grip with downforce, braking, aero and launch traction. Raw values above 600 are compressed so heavy builds spread across S1–R. The honest 0–100 and top speed beside it come from the physics run.
+- **Tuning maps onto the physics we have:**
+  - Camber peaks at −1.5° front and −1° rear, giving up to 2% grip.
+  - Toe-out at the front sharpens turn-in; toe-in at the rear steadies the rear.
+  - Caster adds steering speed.
+  - Springs, ride height, damping, ARBs, brake balance and pressure, final drive, diff locks and downforce act directly.
+- **Mechanical balance** combines roll-stiffness distribution, the rear/front grip ratio, weight distribution and diff lock, calibrated so a stock S15 reads about 0.57.
+- **Parts are owned per car:** each car keeps an inventory, so reinstalling a part it already bought is free. That makes presets and switching builds cheap, as in the reference game. Removing a part (back to Stock) is free and refunds nothing.
+- **FWD swaps are not offered:** every car in the roster is front-engine RWD or AWD, and an FR→FF swap is not "sensible" for a drift game. RWD↔AWD is offered on every car.
+- **Engine heat:** stock engines lose up to 6% power after minutes of flat-out running. Oil & Cooling upgrades slow this, and the race pack removes it.
+- **Build codes** are `KZ1-` plus base64url JSON of car, parts, tune and paint. Import checks every slot and option against the catalogue.
+- **Quick Upgrade** is a greedy planner: it repeatedly buys the best rating gain per yen (plus style preferences for Drift and Grip) under the class ceiling and the player's money and level, then shows the plan and total before buying.

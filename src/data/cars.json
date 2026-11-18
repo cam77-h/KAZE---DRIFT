@@ -261,7 +261,8 @@
    "zeroTo100": 6.8,
    "zeroTo200": null,
    "topSpeed": 200
-  }
+  },
+  "year": 1985
  },
  "kumo_sedan": {
   "physics": {
@@ -376,7 +377,8 @@
    "zeroTo100": 6.5,
    "zeroTo200": null,
    "topSpeed": 210
-  }
+  },
+  "year": 1992
  },
  "sakura_18": {
   "physics": {
@@ -489,7 +491,8 @@
    "zeroTo100": 5.8,
    "zeroTo200": 19,
    "topSpeed": 235
-  }
+  },
+  "year": 1991
  },
  "hoshi_gt": {
   "physics": {
@@ -600,7 +603,8 @@
    "zeroTo100": 5.2,
    "zeroTo200": 16,
    "topSpeed": 250
-  }
+  },
+  "year": 1993
  },
  "sento_rs": {
   "physics": {
@@ -713,7 +717,8 @@
    "zeroTo100": 5.5,
    "zeroTo200": 18,
    "topSpeed": 230
-  }
+  },
+  "year": 1994
  },
  "kaze_r7_87": {
   "physics": {
@@ -830,7 +835,8 @@
    "zeroTo100": 5.0,
    "zeroTo200": 15,
    "topSpeed": 255
-  }
+  },
+  "year": 1987
  },
  "sakura_s15": {
   "physics": {
@@ -894,7 +900,8 @@
    "zeroTo100": 4.9,
    "zeroTo200": 15,
    "topSpeed": 250
-  }
+  },
+  "year": 1999
  },
  "raiden_34": {
   "physics": {
@@ -1027,6 +1034,7 @@
    "zeroTo100": 4.3,
    "zeroTo200": 13,
    "topSpeed": 280
-  }
+  },
+  "year": 1999
  }
 }

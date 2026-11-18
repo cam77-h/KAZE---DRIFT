@@ -27,6 +27,10 @@ export interface OwnedCar {
   mileage: number;
   /** what the player paid for the car and its parts (for the 60% sell-back) */
   paid: number;
+  /** parts bought for this car ("slot.option"); re-installing them is free */
+  inventory?: string[];
+  /** saved builds for this car */
+  presets?: { name: string; parts: Record<string, string>; tune: Record<string, number> }[];
 }
 
 /** One leaderboard row. Shaped for an online board later; local only for now. */

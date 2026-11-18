@@ -24,6 +24,9 @@ export interface FlowCallbacks {
   retry(): void;
   click(): void;
   selectCar(uid: string): void;
+  /** open the 3D showroom as the car select screen */
+  carSelect(): void;
+  openMyCars(): void;
 }
 
 const MODE_CARDS: { id: ModeId; title: string; jp: string; line: string; art: string }[] = [
@@ -84,8 +87,12 @@ export class Flow {
   }
 
   show(id: string | null): void {
+    if (id === 'cars') {
+      for (const s of Object.values(this.screens)) s.classList.remove('on');
+      this.cb.carSelect();
+      return;
+    }
     for (const [k, s] of Object.entries(this.screens)) s.classList.toggle('on', k === id);
-    if (id === 'cars') this.renderCars();
     if (id === 'events') this.renderEvents();
     this.refreshChips();
     const first = id ? this.screens[id]?.querySelector<HTMLElement>('.mbtn, .card, .sbtn') : null;
@@ -127,7 +134,8 @@ export class Flow {
     const menu = el('div', 'menu');
     menu.append(
       this.btn('PLAY', 'プレイ', () => this.show('modes')),
-      this.btn('GARAGE', 'ガレージ', () => this.cb.openGarage()),
+      this.btn('GARAGE', 'ガレージ', () => this.cb.openMyCars()),
+      this.btn('SKILLS', 'スキル', () => this.cb.openGarage()),
       this.btn('DEALER', 'ディーラー', () => this.cb.openDealer()),
       this.btn('RECORDS', '記録', () => this.cb.openRecords()),
       this.btn('SETTINGS', '設定', () => this.cb.openSettings()),
@@ -160,8 +168,16 @@ export class Flow {
     this.back(s, 'main');
   }
 
-  // ---------------------------------------------------------------- cars
-  private renderCars(): void {
+  /** the showroom picked a car: go on to the event list or straight into the drive */
+  chooseCar(uid: string): void {
+    this.cb.selectCar(uid);
+    if (this.pending.mode === 'openroad') this.cb.start({ mode: 'openroad', location: 'openroad', event: 'free' });
+    else if (this.pending.mode === 'practice') this.cb.start({ mode: 'practice', location: 'skidpad', event: 'free' });
+    else this.show('events');
+  }
+
+  // ---------------------------------------------------------------- cars (list fallback, unused since the showroom)
+  renderCars(): void {
     const s = this.screens.cars;
     s.querySelectorAll('.panel-title, .cars, .back').forEach((e) => e.remove());
     this.title(s, 'CAR SELECT', 'Choose your car', '車両選択');

@@ -49,6 +49,8 @@ export class Engine {
   upshiftEvent = 0;
   /** two-step launch: the turbo spools against the limiter (set by the vehicle while staged) */
   antiLag = false;
+  /** engine heat 0..1 (oil & cooling upgrades slow it); fades power by up to 6% */
+  heat = 0;
   private lastThrottle = 0;
   private limiterTime = 0;
   private reverseTimer = 0;
@@ -122,7 +124,11 @@ export class Engine {
     this.lastThrottle = throttle;
     this.load = thr;
 
-    const combustion = thr * curveTorque(s, rpm) * boostFactor * this.powerScale;
+    // heat builds over minutes at high load and rpm, and bleeds off when cruising
+    const work = thr * (rpm / s.redlineRpm);
+    this.heat = Math.min(1, Math.max(0, this.heat + (dt * (work - 0.55)) / (150 * (s.cooling ?? 1))));
+    const fade = s.cooling !== undefined && s.cooling > 50 ? 1 : 1 - 0.06 * this.heat;
+    const combustion = thr * curveTorque(s, rpm) * boostFactor * this.powerScale * fade;
     const friction = (1 - thr) * s.engineBrake * Math.min(1.2, rpm / s.redlineRpm) + 8;
     this.torque = combustion - friction;
     return this.torque;
