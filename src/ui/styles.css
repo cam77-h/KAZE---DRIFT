@@ -181,3 +181,37 @@ body.touch .tach .spd b { font-size: 24px; }
   .row input[type=range] { grid-column: 1 / -1; }
   .hint { display: none; }
 }
+
+/* ---------------------------------------------------------------- skill chain */
+.chain { position: fixed; left: 50%; top: 4.5vh; transform: translateX(-50%); z-index: 11; pointer-events: none; opacity: 0; transition: opacity .2s; text-align: center; }
+.chain.on { opacity: 1; }
+.chain-box { display: flex; align-items: center; gap: 12px; background: rgba(13,26,43,.72); padding: 8px 18px 8px 10px; clip-path: polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%); }
+.chain-ringwrap { position: relative; width: 56px; height: 56px; }
+.chain-ring { width: 56px; height: 56px; transform: rotate(-90deg); }
+.chain-ring circle { fill: none; stroke-width: 4; }
+.chain-ring .bg { stroke: rgba(242,239,230,.15); }
+.chain-ring .fg { stroke: #f2efe6; transition: stroke-dashoffset .1s linear; }
+.chain-mult { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 700; font-style: italic; font-size: 16px; }
+.chain-mult.pulse { animation: pulse .35s ease-out; }
+@keyframes pulse { 0% { transform: scale(1.6); } 100% { transform: scale(1); } }
+.chain-txt { text-align: left; }
+.chain-val { font-size: 38px; font-weight: 700; font-style: italic; line-height: 1; }
+.chain-live { font-size: 11px; letter-spacing: .25em; color: var(--sakura); margin-top: 3px; min-height: 13px; }
+.chain-pops { margin-top: 8px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.chain-pops .pop { font-size: 15px; letter-spacing: .08em; background: var(--paper); color: var(--ink); padding: 3px 12px 2px; clip-path: polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%); animation: popin .25s cubic-bezier(.2,1.6,.4,1); transition: transform .5s cubic-bezier(.6,0,.9,.4), opacity .5s; }
+.chain-pops .pop b { color: var(--red); margin-right: 6px; }
+.chain-pops .pop.bank { background: var(--sodium); }
+.chain-pops .pop.fly { transform: translate(38vw, -6vh) scale(.5); opacity: 0; }
+@keyframes popin { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+.session { position: fixed; right: 76px; top: 18px; z-index: 11; pointer-events: none; display: grid; grid-template-columns: auto auto; gap: 0 10px; align-items: baseline; text-align: right; background: rgba(13,26,43,.6); padding: 6px 14px; clip-path: polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%); }
+.session span { font-size: 10px; letter-spacing: .25em; color: var(--muted); }
+.session b { font-size: 18px; font-weight: 700; }
+.session b.yen { color: var(--sodium); }
+.session.bump { animation: pulse .4s ease-out; }
+.chain-broken { position: fixed; inset: 0; z-index: 30; pointer-events: none; display: grid; place-content: center; text-align: center; opacity: 0; }
+.chain-broken b { font-size: 64px; font-style: italic; letter-spacing: .06em; color: var(--red); text-shadow: 0 4px 0 rgba(0,0,0,.4); }
+.chain-broken span { display: block; font-size: 14px; letter-spacing: .3em; color: var(--paper); }
+.chain-broken.on { animation: broken 1.4s ease-out; }
+@keyframes broken { 0% { opacity: 0; transform: scale(1.3); } 10% { opacity: 1; transform: scale(1); } 70% { opacity: 1; } 100% { opacity: 0; } }
+body.touch .chain { top: 190px; }
+body.touch .session { top: auto; bottom: 230px; right: 3vw; }

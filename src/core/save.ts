@@ -4,7 +4,7 @@ import { defaultSettings, normalizeSettings, type Settings } from './settings';
 // a migration step below, so old saves always load. Export/import codes are the same JSON,
 // deflated and base64url-encoded with a checksum, so progress can move between browsers.
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 export const SAVE_KEY = 'kaze_drift_save';
 const BACKUP_KEY = 'kaze_drift_save_backup';
 const CODE_PREFIX = 'KZD';
@@ -19,26 +19,62 @@ export interface PaintJob {
 export interface OwnedCar {
   uid: string;
   carId: string;
+  /** installed part id per slot */
   parts: Record<string, string>;
   tune: Record<string, number>;
   paint: PaintJob;
   livery: unknown[];
   mileage: number;
+  /** what the player paid for the car and its parts (for the 60% sell-back) */
+  paid: number;
+}
+
+/** One leaderboard row. Shaped for an online board later; local only for now. */
+export interface RecordEntry {
+  track: string;
+  event: string;
+  score: number;
+  car: string;
+  date: number;
+  playerName: string;
+}
+
+export interface CareerStats {
+  distance: number;
+  longestDrift: number;
+  biggestChain: number;
+  moneyEarned: number;
+  nearMisses: number;
+  conesHit: number;
+  timePlayed: number;
+  carTime: Record<string, number>;
+  sessions: number;
 }
 
 export interface SaveData {
   version: number;
   createdAt: number;
   updatedAt: number;
-  profile: { name: string; credits: number; xp: number; level: number };
-  garage: { selected: string; cars: OwnedCar[] };
+  profile: { name: string; credits: number; xp: number; level: number; sp: number };
+  garage: { selected: string; cars: OwnedCar[]; nextUid: number };
   records: {
     bestCombo: number;
     bestScores: Record<string, number>;
     bestTimes: Record<string, number>;
+    /** best medal per event key */
     medals: Record<string, string>;
+    /** medals already paid out per event key (first-time bonuses) */
+    medalsPaid: Record<string, string[]>;
     ghosts: Record<string, string>;
+    /** top 10 per "track|event" key */
+    tables: Record<string, RecordEntry[]>;
+    zoneStars: Record<string, number>;
+    trapStars: Record<string, number>;
   };
+  stats: CareerStats;
+  /** skill tree: perk id → rank */
+  perks: Record<string, number>;
+  unlocks: { parts: string[]; stickers: string[] };
   settings: Settings;
   world: { season: 'auto' | 'spring' | 'summer' | 'autumn' | 'winter'; time: 'auto' | 'dawn' | 'day' | 'golden' | 'dusk' | 'night'; lastLocation: string };
   progress: { introDone: boolean; badges: string[] };
@@ -53,6 +89,7 @@ export function starterCar(): OwnedCar {
     paint: { body: '#f2efe6', finish: 'gloss', wheels: '#c9ccd1', calipers: '#d21f2b' },
     livery: [],
     mileage: 0,
+    paid: 0,
   };
 }
 
@@ -62,13 +99,20 @@ export function newSave(): SaveData {
     version: SAVE_VERSION,
     createdAt: now,
     updatedAt: now,
-    profile: { name: 'Driver', credits: 15000, xp: 0, level: 1 },
-    garage: { selected: 'car-1', cars: [starterCar()] },
-    records: { bestCombo: 0, bestScores: {}, bestTimes: {}, medals: {}, ghosts: {} },
+    profile: { name: 'Driver', credits: 15000, xp: 0, level: 1, sp: 0 },
+    garage: { selected: 'car-1', cars: [starterCar()], nextUid: 2 },
+    records: { bestCombo: 0, bestScores: {}, bestTimes: {}, medals: {}, medalsPaid: {}, ghosts: {}, tables: {}, zoneStars: {}, trapStars: {} },
+    stats: newStats(),
+    perks: {},
+    unlocks: { parts: [], stickers: [] },
     settings: defaultSettings(),
     world: { season: 'auto', time: 'auto', lastLocation: 'minami' },
     progress: { introDone: false, badges: [] },
   };
+}
+
+export function newStats(): CareerStats {
+  return { distance: 0, longestDrift: 0, biggestChain: 0, moneyEarned: 0, nearMisses: 0, conesHit: 0, timePlayed: 0, carTime: {}, sessions: 0 };
 }
 
 type Raw = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -92,6 +136,30 @@ const MIGRATIONS: ((s: Raw) => Raw)[] = [
     s.version = 2;
     return s;
   },
+  // v2 → v3 (Update 2): skill points, perks, career stats, record tables. Players keep every
+  // car they own and also receive the new starter, the Takumi AE.
+  (s) => {
+    s.profile = { sp: 0, ...(s.profile ?? {}) };
+    const cars: Raw[] = Array.isArray(s.garage?.cars) ? s.garage.cars : [];
+    let n = 1;
+    for (const c of cars) {
+      c.paid = c.paid ?? 0;
+      const num = Number(String(c.uid).replace(/\D/g, '')) || 0;
+      n = Math.max(n, num + 1);
+    }
+    if (!cars.some((c) => c.carId === 'takumi_ae')) {
+      const ae = starterCar() as unknown as Raw;
+      ae.uid = `car-${n++}`;
+      cars.push(ae);
+    }
+    s.garage = { ...(s.garage ?? {}), cars, nextUid: n };
+    s.records = { medalsPaid: {}, tables: {}, zoneStars: {}, trapStars: {}, ...(s.records ?? {}) };
+    s.stats = newStats();
+    s.perks = {};
+    s.unlocks = { parts: [], stickers: [] };
+    s.version = 3;
+    return s;
+  },
 ];
 
 /** Bring any older save up to date and fill in missing fields. */
@@ -112,6 +180,9 @@ export function migrate(input: unknown): SaveData {
     records: { ...d.records, ...(s.records ?? {}) },
     world: { ...d.world, ...(s.world ?? {}) },
     progress: { ...d.progress, ...(s.progress ?? {}) },
+    stats: { ...d.stats, ...(s.stats ?? {}) },
+    perks: { ...(s.perks ?? {}) },
+    unlocks: { ...d.unlocks, ...(s.unlocks ?? {}) },
     settings: normalizeSettings(s.settings),
     version: SAVE_VERSION,
   } as SaveData;

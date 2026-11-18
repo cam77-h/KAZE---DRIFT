@@ -35,6 +35,8 @@ describe('save system', () => {
     expect(s.version).toBe(SAVE_VERSION);
     expect(s.records.bestCombo).toBe(12345);
     expect(s.garage.cars[0].paint.body).toBe('#1f6feb');
+    // the v0 starter is kept and the new starter is added alongside it
+    expect(s.garage.cars.some((c) => c.carId === 'takumi_ae')).toBe(true);
     expect(s.garage.cars[0].tune.power).toBe(15000);
     expect(s.settings.audio.muted).toBe(true);
   });
@@ -58,6 +60,18 @@ describe('save system', () => {
     writeSave(s, store);
     store.setItem(SAVE_KEY, '{not json');
     expect(loadSave(store).profile.credits).toBe(1);
+  });
+
+  it('migrates a Phase 1 (v2) save without losing the S15 or money', () => {
+    const v2 = { version: 2, profile: { name: 'Driver', credits: 23456, xp: 300, level: 2 }, garage: { selected: 'car-1', cars: [{ uid: 'car-1', carId: 'sakura_s15', parts: {}, tune: {}, paint: { body: '#123456', finish: 'metallic', wheels: '#fff', calipers: '#f00' }, livery: [], mileage: 12 }] }, records: { bestCombo: 999, bestScores: {}, bestTimes: {}, medals: {}, ghosts: {} } };
+    const s = migrate(v2);
+    expect(s.version).toBe(SAVE_VERSION);
+    expect(s.profile.credits).toBe(23456);
+    expect(s.profile.sp).toBe(0);
+    expect(s.garage.cars.map((c) => c.carId).sort()).toEqual(['sakura_s15', 'takumi_ae']);
+    expect(s.garage.selected).toBe('car-1');
+    expect(s.records.tables).toEqual({});
+    expect(s.stats.distance).toBe(0);
   });
 
   it('rejects saves from the future', () => {
