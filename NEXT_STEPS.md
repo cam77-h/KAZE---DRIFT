@@ -1,61 +1,96 @@
 # Next steps
 
-To continue in a new session, say: **"Read KAZE_DRIFT_SPEC.md and NEXT_STEPS.md and continue."**
+To continue in a new session, say: **"Read KAZE_DRIFT_SPEC.md, KAZE_DRIFT_UPDATE_2.md and NEXT_STEPS.md and continue."**
 
 ## Where the build stands
 
-**Phase 1 (Foundation) is complete** on branch `phase-1-foundation`. Tests pass (31), `npm run build` succeeds, and the Playwright smoke test drives 10 s on both locations with no console errors. Screenshots are in `screenshots/phase-1/`.
+Work is on branch **`update-2`** (pushed). `KAZE_DRIFT_UPDATE_2.md` overrides the original spec where they disagree. Its steps, in order:
 
-What exists (details in `CHANGELOG.md`, the reasoning behind each call in `DECISIONS.md`):
+| Step | Update 2 sections | Status |
+|---|---|---|
+| 1 | §1 Real 3D models | **Done.** `CarModelLoader`, 7 imported cars + traffic, `/model-viewer.html`, Settings → Credits |
+| 2 | §2 Make the cars look good | **Done.** Paint finishes, contact shadows, stance and camber, SSAO at Medium; before/after shots in `screenshots/update-2/cars/` |
+| 3 | §3–5 Mode select, Open Road, Drift Track | **Done.** Menu flow, 8.9 km Open Road with traffic and activities, 4 drift venues × 3 events, results |
+| 4 | §6–7 Scoring, money, XP, skill points | **Done.** Skill chain, `economy.json` tuned by the pacing test, Dealer, skill tree, milestones |
+| 5 | §8 Garage with live part installs | **Next: not started** |
+| 6 | §9 High scores and records | Partly done: records are saved (top-10 tables, ghosts, medals, career stats); the Records screen isn't built |
+| 7 | §11 Verify everything (+ §10 polish) | Partly done: `tests/smoke/update2.cjs` covers menus → Open Road → results; the garage, purchase and record checks are still to add |
 
-- Fixed 120 Hz loop, state machine, event bus, settings, versioned save with migrations and export/import codes.
-- Four-wheel physics: raycast suspension, magic-formula combined-slip tires, turbo engine, clutch, gearbox, LSD, assists, surfaces, wall/body collisions.
-- One car: the Sakura S15, with a procedural model.
-- Two locations: Kaze Test Skidpad and Minami Drift Park.
-- Basic HUD, menus, settings, touch/gamepad/keyboard input, synthesised engine audio, smoke, skid marks.
-- GitHub Actions workflow that deploys `main` to GitHub Pages.
+Tests: 50 vitest tests pass (`npm test`), `npm run build` passes, and `node tests/smoke/update2.cjs` passes against `npx vite --port 5199`.
 
-## Phase 2: scoring and the first great location (do this next)
+## Step 5: the Garage (§8). Do this next.
 
-Spec sections 5, 7.2, 8 and 10 (spring, day/night).
+Build it in this order, committing after each part:
 
-1. **Skill chain** (`src/scoring/skillChain.ts`): skills add points, the multiplier runs 1×–10× with tiers, points bank after 2.5 s idle, and a countdown ring on the HUD. A wall, traffic or a spin-out wipes the unbanked chain with a "CHAIN BROKEN" moment. The hooks are already in place:
-   - `Game.step()` already gets `vehicle.impacts`.
-   - `PostStack.setLook()` already takes a `desaturate` amount (it currently flashes on hard impacts).
-   - `ConeField.onKnock` is the hook for Wreckage points.
-2. **Drift judging** (`src/scoring/driftJudge.ts`): score = angle × speed × line × proximity × style. Place clipping points and zones in track JSON (`clips: [{ s, side, kind }]`), show them as glowing markers, and add penalties and a results breakdown with medals. Minami's concrete wall is at 0.645–0.765 of the lap (right side) and makes a natural outer clipping zone.
-3. **Akagiri Touge**: build it on the `Road` system with a long open (point-to-point) road. Add hairpins, gutters (a narrow drop in the height function at the road edge, which wheels can hook), guardrails, cedar forest, a torii gate and stone lanterns at the summit, a lookout with vending machines, and the hotel. It needs downhill, uphill and full routes, which can be the same road with different start/finish `s` values.
-4. **Spring season**: sakura trees as an instanced variant in `scenery.ts`, plus falling petals as a second `SmokeSystem`-style instanced particle layer with a pink tint and slow fall.
-5. **Day and night**: `Environment.setHour()` already handles the sun, moon, stars, exposure and environment map. Still to do: point/spot lights for streetlights near the camera (pool ~8, nearest first), a sodium colour, and light pools on the road.
-6. **Modes** (`src/modes/`): drift zone, time attack with ghosts and sectors, and tandem chase, which needs `ai/leadDriver.ts` following a scripted line with angle and speed targets.
-   - Ghosts: record the pose at 30 Hz and store it delta-encoded in `save.records.ghosts` (see `SaveData`).
+1. **Parts data** (`src/data/parts.json`): every performance part as data. Each part has a slot, a tier (street/sport/race/pro, with the level gates from `economy.json` `partTierLevel`), a price, a plain-words description, and an `effects` object applied to a cloned `CarPhysicsSpec`:
+   - torque multiplier, turbo spool and lag, boost share
+   - gear ratios, final drive, clutch torque, diff type and locks
+   - springs, dampers and anti-roll bars, steer lock (angle kit 35° → 55° → 70°)
+   - tire compound, brake torque, handbrake torque, mass
+   - downforce, from aero
 
-## Known gaps and polish notes carried forward
+   Write `applyParts(spec, owned.parts, owned.tune)` in `src/vehicles/parts.ts`. Call it in `Game.ensureCar()` after `carPhysics()` and before `fitPhysicsToModel`. `Vehicle.rebuild()` already re-derives everything from the spec.
+2. **Visual parts**, built procedurally from `CarVisual.dims` (length, width, height, axle z, wheel radius) so they fit every model:
+   - wings (none, ducktail, low GT, high GT, swan-neck, with stands and endplates)
+   - lip / splitter, side skirts, diffuser, canards
+   - fender flares sized to the wheel
+   - exhaust tips (single, dual, bosozoku, centre)
+   - hood (vented, carbon), tow hook, beginner-leaf sticker, underglow, tinted glass
 
-- **glTF car loading** is Phase 4. The node-name contract is documented in the README.
-- **Engine swaps, parts and tuning** are Phase 3. `Vehicle.rebuild()` already recomputes everything derived from the spec, so the parts system can edit a cloned `CarPhysicsSpec` and call it.
-- **Expert mode (no assists):** the car is drivable but twitchy. The scripted drift test in `tests/sim/drift.ts` with assist 0 oscillates between 18° and 48°. Consider a little more rear falloff or yaw inertia if playtesters find Expert too hard.
-- **Car model:** the lamp outlines are a little stepped up close, so raise the patch resolution or clip to the outline. The nose could be slightly sharper.
-- **Night** is dark away from the headlights until streetlight lights arrive in Phase 2.
-- **Performance** was only checked headless with a software renderer (about 2–3 fps there, so not representative). Measure on real hardware at the Medium preset; the main levers are tree count (`scenery.trees.count`), shadow quality and render scale.
-- **Mechanical damage** has a setting slot (`assists.damage`) but no effect yet; visual scuffs come later.
+   Put them in `src/vehicles/visualParts.ts`. They attach to `visual.root`.
+3. **Wheels:** at least 8 designs. Use the Kenney `wheel-*.glb` models plus procedural 6-spoke, mesh, deep-dish and 5-spoke (`buildWheel` in `src/vehicles/wheelModel.ts` already does 6-spoke and mesh). Swap the visual wheel inside each `WheelSlot.spin`, with size, width, colour and stance. Stance uses `CarView.setStance(drop, camberF, camberR)`, which already exists.
+4. **The 3D garage scene** (`src/world/garage.ts`): a room with tool walls, a car lift, fluorescent tubes (one flickering), posters using `bannerTexture` with the fictional brands, a tire stack and a sleeping cat. The car sits on a slowly turning turntable, and the camera flies to the part's area (wheels, front, rear, engine bay with the hood open, exhaust, underside).
+5. **Garage UI:** a categories rail, the part list, and before → after stat bars:
+   - Power, Grip, Handling, Braking, Drift, Rating/class: compute the rating (100–999) and class D…X from power-to-weight, grip, braking and aero.
+   - Hovering a part previews it.
+   - Buying runs a ~1.5 s install animation (skippable): the old part pops off, the new one slides on, sparks, a clank sound (`CarAudio.sfx` style).
+   - Paint sweeps across like a spray pass.
+6. **Tuning tab** (unlocks per part): tire pressure, camber, toe, ride height, springs, ARBs, diff lock, brake balance, final drive. Each slider gets a tooltip and an understeer ↔ oversteer bar, plus per-car presets.
+7. **Paint** (`PaintFinish` in `src/vehicles/paint.ts`): body, wheel and caliper colours, plus livery presets (stripes, panda two-tone, number boards).
+8. **Test drive:** drops you on the skidpad (`startSession({mode:'practice', location:'skidpad', event:'free'})`), and one key returns you to the garage. The `testDrive` perk pays ¥500.
+9. **Skill tree tab:** move it inside the Garage (the main-menu GARAGE button currently opens it directly: `Game.openShop('skills')`). The milestone "free part" from §7 lands here.
 
-## How to verify a phase
+## Step 6: Records (§9)
 
-```bash
-npm test
-```
+The data already exists:
+- `save.records.tables` (top 10 per `track|event`, shaped `{track, event, score, car, date, playerName}`)
+- `save.records.ghosts` (best Time Attack lap per `event|car`, base64 Float32 at 30 Hz)
+- `save.records.medals`, `zoneStars`, `trapStars`
+- `save.stats` (distance, longest drift, biggest chain, money earned, near misses, cones hit, time played, time per car)
 
-```bash
-npm run build
-```
+Still to do:
+- Build the Records screen: a tab per venue / event / Open Road zone with the top 10, personal best and medal targets (`src/data/events.json`, zone stars in the track JSON), plus career stats including favourite car (the most `stats.carTime`). The main menu's RECORDS button currently shows a toast (`Game` → `openRecords`).
+- Ghosts are keyed per car. The update asks for "per track and car class", so switch the key once classes exist (step 5).
+- New-record moments: the results banner and fanfare already work.
 
-```bash
-npx vite preview --port 4173 &
-```
+## Step 7: verify (§11) and polish (§10)
 
-```bash
-node tests/smoke/smoke.cjs <phase-number>
-```
+- Extend `tests/smoke/update2.cjs`:
+  - Garage: buy a wing and wheels, check money went down and the parts are visible (count meshes under `visual.root` named `part-*`)
+  - Drift Track: run an event and check a record was saved (`window.__kaze.game.save.records.tables`)
+  - Look at every screenshot.
+- Re-check `/model-viewer.html` for every model.
+- §10:
+  - F3 performance overlay toggle: `Hud` telemetry exists; add fps, draw calls (`renderer.info`) and the traffic count.
+  - Tachometer-styled loading bar for model preloading (`preload()` in `modelLoader.ts` reports progress).
+  - Instancing or LOD for distant traffic (it's currently pooled and culled beyond 700 m).
+  - Back buttons and gamepad focus on every new screen.
+- Update `README.md` and `CHANGELOG.md` for the garage and records, then commit and open a pull request.
 
-Then look at `screenshots/phase-N/`, fix anything broken or ugly, update `CHANGELOG.md`, `DECISIONS.md` and this file, and commit.
+## Known gaps carried forward
+
+- **Tandem Chase** runs only the chase run. The "swap roles, you lead" second run is still to do: record the player's lead line, then have the AI follow it.
+- **The RX-7's pop-up headlights** don't animate yet. The node is `Headlights` in `kaze_rx7fc_ivofficial.glb`; rotate it about its rear edge at night.
+- **Traffic:** no night lights, no turn signals and no lane changes yet; it never overtakes.
+- **Open Road danger sign:** the summit crest is gentle, so jumps there are small. Add a real kicker (a short height bump in the road profile, `tests/tools/gen_openroad.py`) if it feels flat.
+- **Real-GPU performance** is unmeasured. Everything was checked in software rendering at about 1–3 fps.
+- **The Phase 1 smoke script** (`npm run smoke:phase1`) still expects the old title menu. The Update 2 script (`npm run smoke`) supersedes it.
+
+## Useful tools
+
+- `node tests/tools/glbinfo.mjs <file.glb>`: node tree, bounds and materials of a model
+- `node tests/tools/viewershots.cjs <outdir> http://localhost:5199 name:m=<id>&yaw=..`: model-viewer screenshots
+- `npx tsx tests/sim/layout.ts <track.json> out.svg`: layout preview and stats
+- `python3 tests/tools/gen_openroad.py` / `gen_tracks.py`: regenerate the Open Road and the new drift venues
+- `node tests/tools/modeart.cjs`: re-render the mode-select art
+- `window.__kaze` in the browser: `session(cfg)`, `end()`, `teleport(s, speed)`, `setInput({...})`, `money()`, `result()`, `traffic()`

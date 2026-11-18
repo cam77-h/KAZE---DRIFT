@@ -2,7 +2,11 @@
 
 A JDM street-culture driving game for the browser: tight drift handling, Japanese-inspired locations and a deep garage. Built with Vite, TypeScript (strict) and Three.js. The full design spec is in [`KAZE_DRIFT_SPEC.md`](KAZE_DRIFT_SPEC.md); progress and the next steps are in [`NEXT_STEPS.md`](NEXT_STEPS.md).
 
-**Status: Phase 1 (Foundation) done.** You can drive the Sakura S15 on the Kaze Test Skidpad and at Minami Drift Park.
+**Status: Update 2, steps 1–4 of 7 done** (see [`KAZE_DRIFT_UPDATE_2.md`](KAZE_DRIFT_UPDATE_2.md) and [`NEXT_STEPS.md`](NEXT_STEPS.md)):
+- **Cars:** eight, seven of them imported 3D models.
+- **Modes:** Open Road (a 9 km loop with traffic), Drift Track (four venues: Drift Attack, Time Attack and Tandem), and Practice.
+- **Progression:** a skill chain, money, levels, a dealer and a skill tree.
+- **Still to build:** the 3D garage with part installs, and the records screen.
 
 ## Run it
 
@@ -22,7 +26,8 @@ Then open the URL Vite prints (usually http://localhost:5173).
 | `npm run build` | Type-check, then build the static site into `dist/` |
 | `npm run preview` | Serve the built `dist/` locally |
 | `npm test` | Vitest unit tests (physics, tires, save system, track, input) |
-| `npm run smoke` | Playwright smoke test: drives 10 s on each location and saves screenshots to `screenshots/phase-1/`. Needs `npx vite preview --port 4173` running |
+| `npm run smoke` | Update 2 check: menus → Open Road → results, screenshots to `screenshots/update-2/`. Needs `npx vite --port 5199` running |
+| `/model-viewer.html` | Every car and traffic model on a turntable, with bounding boxes and wheel pivots (`?m=<id>`) |
 
 `dist/` is a plain static site with relative paths, so it runs from any static host, including a GitHub Pages project subpath.
 
@@ -86,7 +91,14 @@ dev/         dev-only pages (dev/car.html is a car turntable for checking models
 
 The game generates everything in code and needs no downloaded files. Optional assets go in `assets/`:
 
-- **Cars:** `assets/cars/<car id>.glb` (the path is `visual.glb` in `cars.json`). Name the nodes `wheel_fl`, `wheel_fr`, `wheel_rl`, `wheel_rr` (wheels), `body` (painted panels), `glass`, `light_head`, `light_tail` and `light_reverse`. Put the model origin on the ground under the centre of gravity, with +Z forward and metres as units. glTF loading arrives in Phase 4; until then the procedural model is used.
+- **Cars:** put the `.glb` under `public/assets/models/` and describe it in `src/data/cars.json` → `visual.glb`:
+  - `file`, `forward` (`"+z"` or `"-z"`) and the real-world `length` in metres
+  - optional `wheels` node names [FL, FR, RL, RR]; wheels are auto-detected by shape and position otherwise, and a shared rear-axle node is fine
+  - `paintMaterials`, or `paintKey`/`paintTolerance` for atlas-textured models
+  - `hide` (badge nodes or materials), `plates`, `headMaterials`/`tailMaterials`
+  - `strip`: regions where modelled lettering is deleted
+
+  Check it in `/model-viewer.html?m=<id>`. If loading fails, the game falls back to the procedural car.
 - **Music:** `assets/music/*.mp3|ogg` (the radio arrives in Phase 6).
 
 Third-party assets must be CC0 or CC-BY and listed in [`CREDITS.md`](CREDITS.md).
