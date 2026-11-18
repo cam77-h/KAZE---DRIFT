@@ -23,7 +23,7 @@ for (const r of track.roads) {
   const pts = r.samples.map((p) => `${sx(p.x)},${sz(p.z)}`).join(' ');
   svg += `<polyline points="${pts}${r.def.closed ? ' ' + sx(r.samples[0].x) + ',' + sz(r.samples[0].z) : ''}" fill="none" stroke="#222" stroke-width="${r.def.width}" stroke-linejoin="round"/>`;
   for (const p of r.samples) { const R = 1 / Math.max(1e-6, Math.abs(p.curvature)); if (R < minR) { minR = R; minAt = p.s; } }
-  r.samples.forEach((p, i) => { if (i % 50 === 0) svg += `<text x="${sx(p.x)}" y="${sz(p.z)}" font-size="9" fill="#ff0">${i} y${p.y.toFixed(0)}</text>`; if (p.kerbL) svg += `<circle cx="${sx(p.x + p.lx * (p.halfWidth + 0.5))}" cy="${sz(p.z + p.lz * (p.halfWidth + 0.5))}" r="0.6" fill="#f33"/>`; });
+  r.samples.forEach((p, i) => { if (i % (def.size > 1500 ? 250 : 50) === 0) svg += `<text x="${sx(p.x)}" y="${sz(p.z)}" font-size="${def.size > 1500 ? 30 : 9}" fill="#ff0">${i} y${p.y.toFixed(0)}</text>`; if (p.kerbL) svg += `<circle cx="${sx(p.x + p.lx * (p.halfWidth + 0.5))}" cy="${sz(p.z + p.lz * (p.halfWidth + 0.5))}" r="0.6" fill="#f33"/>`; });
   // self-approach check: samples far apart along s but close in space
   let closest = Infinity;
   const m = r.samples.length;
@@ -38,4 +38,4 @@ for (const r of track.roads) {
 }
 for (const w of track.walls.walls) svg += `<line x1="${sx(w.x1)}" y1="${sz(w.z1)}" x2="${sx(w.x2)}" y2="${sz(w.z2)}" stroke="${w.material === 'tire' ? '#fff' : w.material === 'concrete' ? '#0cf' : '#fc0'}" stroke-width="1"/>`;
 svg += `<circle cx="${sx(def.spawn.x)}" cy="${sz(def.spawn.z)}" r="3" fill="#f0f"/>`;
-writeFileSync(outPath, `<svg xmlns="http://www.w3.org/2000/svg" width="${def.size}" height="${def.size}" viewBox="0 0 ${def.size} ${def.size}"><rect width="100%" height="100%" fill="#000"/>${svg}</svg>`);
+writeFileSync(outPath, `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 ${def.size} ${def.size}"><rect width="100%" height="100%" fill="#000"/>${svg}</svg>`);

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GameLoop, PHYSICS_DT } from './core/loop';
 import { StateMachine } from './core/state';
 import { EventBus, type GameEvents } from './core/events';
-import { loadSave, newSave, writeSave, type SaveData } from './core/save';
+import { loadSave, newSave, writeSave, type OwnedCar, type SaveData } from './core/save';
 import { defaultKeys, type Action } from './core/settings';
 import { InputManager } from './input/input';
 import { Vehicle } from './physics/vehicle';
@@ -12,6 +12,8 @@ import { Track } from './world/track';
 import { buildTrackMeshes } from './world/trackMesh';
 import { buildScenery } from './world/scenery';
 import { CarView } from './vehicles/carView';
+import { buildCarVisual, fitPhysicsToModel } from './vehicles/carVisual';
+import type { PaintFinish } from './vehicles/paint';
 import { Environment } from './render/environment';
 import { PostStack } from './render/post';
 import { ChaseCamera } from './render/camera';
@@ -21,8 +23,18 @@ import { CarAudio } from './audio/engineAudio';
 import { Hud } from './ui/hud';
 import { Menus, TouchControls } from './ui/menus';
 import { TRACKS, carDef, carName, carPhysics, trackName } from './data';
+import { Flow } from './ui/flow';
+import { Shop } from './ui/shop';
+import { ChainHud } from './ui/chainHud';
+import { SkillChain } from './scoring/skillChain';
+import { TrafficSystem } from './world/traffic';
+import { buildOpenRoadScenery } from './world/openRoadScenery';
+import { OpenRoadMode } from './modes/openRoad';
+import { DriftEventMode } from './modes/driftEvent';
+import type { GameApi, ModeController, SessionConfig } from './modes/types';
+import { formatYen } from './core/progression';
 
-type GameState = 'boot' | 'title' | 'select' | 'loading' | 'drive' | 'paused';
+type GameState = 'boot' | 'title' | 'menu' | 'loading' | 'drive' | 'paused';
 
 interface Location {
   id: string;
@@ -60,6 +72,20 @@ export class Game {
   private desat = 0;
   private uiRoot: HTMLElement;
   private assistFlags: Record<string, boolean> = { ABS: false, TCS: false, STM: false, DRIFT: false };
+  readonly flow: Flow;
+  readonly chainHud: ChainHud;
+  readonly shop: Shop;
+  chain = new SkillChain();
+  private mode: ModeController | null = null;
+  private session: SessionConfig | null = null;
+  private traffic: TrafficSystem | null = null;
+  private objectiveEl: HTMLElement;
+  private bannerEl: HTMLElement;
+  private sessionTime = 0;
+  private playerSCache = 0;
+  private endTimer = 0;
+  private seaT = 0;
+  private animated: THREE.Object3D[] = [];
 
   constructor(private container: HTMLElement) {
     this.save = loadSave();
@@ -87,15 +113,15 @@ export class Game {
     this.touch = new TouchControls(this.uiRoot, this.input);
     if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch');
     this.menus = new Menus(this.uiRoot, s, this.input, () => this.save, {
-      onFreeDrive: () => this.state.go('select'),
-      onSelectLocation: (id) => void this.startDriving(id),
+      onFreeDrive: () => this.goMenu('main'),
+      onSelectLocation: () => undefined,
       onResume: () => this.resume(),
       onReset: () => {
         this.resetCar();
         this.resume();
       },
-      onChangeLocation: () => this.state.go('select'),
-      onQuit: () => this.state.go('title'),
+      onChangeLocation: () => this.endSession(),
+      onQuit: () => this.abandonSession(),
       onSettingsChanged: (section) => this.applySettings(section),
       onImportSave: (data) => {
         this.save = data;
@@ -112,6 +138,53 @@ export class Game {
       click: () => this.audio.click(),
     });
 
+    this.flow = new Flow(this.uiRoot, () => this.save, {
+      start: (cfg) => void this.startSession(cfg),
+      openSettings: () => this.openSettingsFromMenu(),
+      openGarage: () => this.openShop('skills'),
+      openDealer: () => this.openShop('dealer'),
+      openRecords: () => this.hud.toast('RECORDS · coming in step 6'),
+      openHowTo: () => {
+        this.menus.openSettings('menu', 'controls');
+        this.flow.show(null);
+      },
+      retry: () => this.session && void this.startSession(this.session),
+      click: () => this.audio.click(),
+      selectCar: (uid) => {
+        this.save.garage.selected = uid;
+        this.persist();
+      },
+    });
+    this.menus.onClose = (to) => {
+      if (to === 'menu') this.goMenu('main');
+      else this.menus.show(to);
+    };
+    this.shop = new Shop(this.uiRoot, () => this.save, {
+      changed: () => {
+        this.persist();
+        this.flow.refreshChips();
+      },
+      back: () => {
+        this.shop.hide();
+        this.flow.show('main');
+      },
+      click: () => this.audio.click(),
+      toast: (t) => this.hud.toast(t),
+      chip: () => {
+        const c = document.createElement('div');
+        c.className = 'profile-chip';
+        const sv = this.save;
+        c.innerHTML = `<span class="lv">LV ${sv.profile.level}</span><b>${formatYen(sv.profile.credits)}</b><span class="sp">${sv.profile.sp} SP</span>`;
+        return c;
+      },
+    });
+    this.chainHud = new ChainHud(this.uiRoot);
+    this.chainHud.setVisible(false);
+    this.objectiveEl = document.createElement('div');
+    this.objectiveEl.className = 'objective';
+    this.bannerEl = document.createElement('div');
+    this.bannerEl.className = 'banner';
+    this.uiRoot.append(this.objectiveEl, this.bannerEl);
     this.input.onAction((a) => this.onAction(a));
     this.setupStates();
     this.applySettings('all');
@@ -143,25 +216,32 @@ export class Game {
       .add('title', {
         enter: () => {
           this.menus.show('title');
+          this.flow.show(null);
           this.hud.setVisible(false);
+          this.chainHud.setVisible(false);
           this.touch.setVisible(false);
           this.loop.paused = false;
           if (!this.location || this.location.id !== 'minami') void this.loadLocation('minami', true);
         },
       })
-      .add('select', {
+      .add('menu', {
         enter: () => {
-          this.menus.show('select');
+          this.menus.show(null);
           this.hud.setVisible(false);
+          this.chainHud.setVisible(false);
+          this.objectiveEl.textContent = '';
           this.touch.setVisible(false);
           this.loop.paused = false;
+          this.audio.resume();
         },
       })
       .add('loading')
       .add('drive', {
         enter: () => {
           this.menus.show(null);
+          this.flow.show(null);
           this.hud.setVisible(true);
+          this.chainHud.setVisible(this.session?.mode !== 'practice');
           this.touch.setVisible(true);
           this.loop.paused = false;
           this.audio.resume();
@@ -171,6 +251,7 @@ export class Game {
         enter: () => {
           this.menus.show('pause');
           this.hud.setVisible(false);
+          this.chainHud.setVisible(false);
           this.touch.setVisible(false);
           this.loop.paused = true;
           this.audio.suspend();
@@ -195,11 +276,22 @@ export class Game {
   }
 
   private onAction(a: Action): void {
+    if (this.state.is('title') && this.menus.visible === 'title') {
+      this.goMenu('main');
+      return;
+    }
+    if (a === 'reset' && this.state.is('menu') && this.flow.visible === 'results' && this.session) {
+      void this.startSession(this.session);
+      return;
+    }
     if (a === 'pause') {
       if (this.state.is('drive')) this.pause();
       else if (this.state.is('paused') && this.menus.visible === 'pause') this.resume();
-      else if (this.menus.visible === 'settings') this.menus.show(this.state.is('paused') ? 'pause' : 'title');
-      else if (this.state.is('select')) this.state.go('title');
+      else if (this.menus.visible === 'settings') this.menus.onClose?.(this.state.is('paused') ? 'pause' : 'menu');
+      else if (this.state.is('menu')) {
+        const v = this.flow.visible;
+        this.goMenu(v === 'events' ? 'cars' : v === 'cars' ? 'modes' : 'main');
+      }
       return;
     }
     if (!this.state.is('drive')) return;
@@ -223,12 +315,25 @@ export class Game {
     const tick = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
     await tick();
     const g = this.save.settings.graphics;
+    // same place again (retry): keep the world, just respawn
+    if (this.location && this.location.id === id && !background) {
+      this.skids.clear();
+      this.smoke.clear();
+      this.location.cones?.reset();
+      this.traffic?.reset();
+      progress(0.8);
+      await this.spawnCar();
+      progress(1);
+      await tick();
+      return;
+    }
     // tear down the old location
     if (this.location) {
       this.scene.remove(this.location.group);
       disposeGroup(this.location.group);
       this.location = null;
     }
+    this.traffic = null;
     this.skids.clear();
     this.smoke.clear();
     progress(0.1);
@@ -248,20 +353,54 @@ export class Game {
       cones = new ConeField(scenery.cones, track);
       cones.onKnock = (_c, speed) => {
         this.cam.bump(0.08);
+        if (this.state.is('drive')) {
+          this.chain.wreckage(1);
+          this.save.stats.conesHit++;
+        }
         this.audio.impact(speed * 0.3, 'tire');
       };
       group.add(cones.mesh);
     }
-    progress(0.8);
+    const lamps = [...scenery.lamps];
+    if (track.def.sections) {
+      const or = buildOpenRoadScenery(track);
+      group.add(or.group);
+      lamps.push(...or.lamps);
+    }
+    progress(0.75);
+    await tick();
+    if (id === 'openroad') {
+      const tr = new TrafficSystem(track, {
+        onNearMiss: () => {
+          this.chain.nearMiss();
+          (this.mode as OpenRoadMode | null)?.nearMiss?.();
+          this.input.rumble(0.1, 0.4, 90);
+        },
+        onHit: (speed) => {
+          this.chain.break('HIT TRAFFIC');
+          this.audio.impact(speed * 1.5, 'concrete');
+          this.cam.bump(Math.min(1, speed / 8));
+          this.mode?.onImpact(speed, 'traffic');
+        },
+        onHonk: () => this.audio.sfx('honk'),
+      });
+      await tr.init(this.save.settings.graphics.preset === 'low' ? 22 : 34, (f) => progress(0.75 + f * 0.1));
+      group.add(tr.group);
+      this.traffic = tr;
+    }
+    progress(0.85);
     await tick();
     if (token !== this.loadToken) {
       disposeGroup(group);
       return;
     }
     this.scene.add(group);
-    this.location = { id, track, group, lamps: scenery.lamps, cones };
+    this.animated = [];
+    group.traverse((o) => (o.userData as { animate?: unknown }).animate && this.animated.push(o));
+    this.location = { id, track, group, lamps, cones };
     this.save.world.lastLocation = id;
-    this.spawnCar();
+    progress(0.9);
+    await this.spawnCar();
     this.applyTimeOfDay();
     progress(1);
     // warm up shaders so the first frames don't hitch
@@ -269,43 +408,189 @@ export class Game {
     await tick();
   }
 
-  private async startDriving(id: string): Promise<void> {
+  goMenu(screen: string): void {
+    this.shop?.hide();
+    if (!this.state.is('menu')) this.state.go('menu');
+    this.menus.show(null);
+    this.flow.show(screen);
+    if (!this.location) void this.loadLocation('minami', true);
+  }
+
+  openShop(which: 'dealer' | 'skills'): void {
+    if (!this.state.is('menu')) this.state.go('menu');
+    this.flow.show(null);
+    if (which === 'dealer') this.shop.showDealer();
+    else this.shop.showSkills();
+  }
+
+  private openSettingsFromMenu(): void {
+    this.flow.show(null);
+    this.menus.openSettings('menu');
+  }
+
+  /** Start a session: load the location, build the car, set up the mode. */
+  async startSession(cfg: SessionConfig): Promise<void> {
+    this.mode?.dispose();
+    this.mode = null;
+    this.session = cfg;
     this.state.go('loading');
-    if (!this.location || this.location.id !== id || this.loadToken === 0) await this.loadLocation(id);
-    else {
-      this.menus.showLoading(id);
-      this.menus.setProgress(1);
-      this.spawnCar();
-    }
+    this.flow.show(null);
+    await this.loadLocation(cfg.location);
+    this.chain = new SkillChain({ bankTime: 2.5 + 0.5 * (this.save.perks.bank ?? 0), maxMultiplier: 10 + (this.save.perks.mult ?? 0), nearMissBonus: 1 + 0.25 * (this.save.perks.nearmiss ?? 0) });
+    this.chain.enabled = cfg.mode !== 'practice';
+    this.chain.on((e) => {
+      this.chainHud.handle(e);
+      if (e.type === 'break') {
+        this.desat = 0.85;
+        this.audio.sfx('crack');
+        this.input.rumble(0.8, 0.6, 300);
+      }
+      if (e.type === 'bank') this.audio.sfx('bank');
+    });
+    this.chainHud.reset();
+    if (cfg.mode === 'openroad') this.mode = new OpenRoadMode(cfg);
+    else if (cfg.mode === 'drift') this.mode = new DriftEventMode(cfg);
+    else this.mode = null;
+    if (this.mode) await this.mode.setup(this.gameApi());
+    this.sessionTime = 0;
+    this.endTimer = 0;
     this.cam.mode = this.save.settings.gameplay.camera;
     this.cam.snap();
     this.audio.start(this.vehicle?.spec.engine.cylinders ?? 4);
+    this.save.stats.sessions++;
     setTimeout(() => this.state.go('drive'), 250);
   }
 
-  private spawnCar(): void {
-    const loc = this.location!;
-    const owned = this.save.garage.cars.find((c) => c.uid === this.save.garage.selected) ?? this.save.garage.cars[0];
-    const def = carDef(owned.carId);
-    if (!this.vehicle || this.vehicle.spec.id !== owned.carId) {
-      if (this.view) {
-        this.scene.remove(this.view.group);
-        this.view.dispose();
-      }
-      this.vehicle = new Vehicle(carPhysics(owned.carId), this.save.settings.assists);
-      this.view = new CarView(this.vehicle, def, owned.paint.body);
-      this.scene.add(this.view.group);
+  /** End the session normally: pay out and show results. */
+  endSession(): void {
+    if (!this.session) return this.goMenu('main');
+    this.save.stats.timePlayed += this.sessionTime;
+    if (this.vehicle) this.save.stats.carTime[this.vehicle.spec.id] = (this.save.stats.carTime[this.vehicle.spec.id] ?? 0) + this.sessionTime;
+    if (!this.mode) {
+      this.persist();
+      return this.goMenu('main');
     }
+    const r = this.mode.result();
+    this.mode.dispose();
+    this.mode = null;
+    this.traffic?.reset();
+    this.persist();
+    this.state.go('menu');
+    if (r.newRecord) this.audio.sfx('record');
+    this.flow.showResults(r);
+    for (const up of r.levelUps.filter((u) => u.milestone)) {
+      const set = `sticker-set-${up.level}`;
+      if (!this.save.unlocks.stickers.includes(set)) this.save.unlocks.stickers.push(set);
+      this.celebrate(`LEVEL ${up.level}`, `MILESTONE · STICKER SET UNLOCKED · +${formatYen(up.yen)}`);
+    }
+  }
+
+  /** Quit without rewards. */
+  abandonSession(): void {
+    this.mode?.dispose();
+    this.mode = null;
+    this.traffic?.reset();
+    this.persist();
+    this.goMenu('main');
+  }
+
+  private gameApi(): GameApi {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const g = this;
+    return {
+      scene: this.scene,
+      get save() {
+        return g.save;
+      },
+      get chain() {
+        return g.chain;
+      },
+      get track() {
+        return g.location!.track;
+      },
+      get vehicle() {
+        return g.vehicle!;
+      },
+      get carId() {
+        return g.vehicle!.spec.id;
+      },
+      playerS: () => this.playerSCache,
+      toast: (t, sec) => this.hud.toast(t, sec),
+      banner: (t, sub, color) => this.banner(t, sub, color),
+      sound: (k) => this.audio.sfx(k),
+      resetToStart: () => this.resetCar(),
+      addMarker: (kind, x, z) => this.hud.addMarker(kind, x, z),
+      setObjective: (t) => {
+        if (this.objectiveEl.textContent !== t) this.objectiveEl.textContent = t;
+      },
+      finish: () => setTimeout(() => this.state.is('drive') && this.endSession(), 2200),
+    };
+  }
+
+  private celebrate(title: string, sub: string): void {
+    const d = document.createElement('div');
+    d.className = 'celebrate';
+    d.innerHTML = `<b>${title}</b><span>${sub}</span><em>CLICK TO CONTINUE</em>`;
+    d.addEventListener('click', () => d.remove());
+    this.uiRoot.append(d);
+    this.audio.sfx('record');
+  }
+
+  private banner(title: string, sub: string, color = '#f2efe6'): void {
+    this.bannerEl.innerHTML = `<b style="color:${color}">${title}</b><span>${sub}</span>`;
+    this.bannerEl.classList.remove('on');
+    void this.bannerEl.offsetWidth;
+    this.bannerEl.classList.add('on');
+  }
+
+  /** Build (or rebuild) the player's car: model first, so the physics can match its geometry. */
+  private async ensureCar(): Promise<void> {
+    const owned = this.currentCar();
+    const carId = new URLSearchParams(location.search).get('car') ?? owned.carId;
+    const key = `${carId}|${owned.uid}`;
+    if (this.vehicle && this.carKey === key) return;
+    const def = carDef(carId);
+    const visual = await buildCarVisual(def, owned.paint.body, (owned.paint.finish as PaintFinish) ?? 'metallic');
+    const spec = carPhysics(carId);
+    if (visual.kind === 'glb') fitPhysicsToModel(spec, visual.dims);
+    if (this.view) {
+      this.scene.remove(this.view.group);
+      this.view.dispose();
+    }
+    if (this.save.perks.quickShift) spec.gearbox.shiftTime *= 0.7;
+    this.vehicle = new Vehicle(spec, this.save.settings.assists);
+    this.view = new CarView(this.vehicle, visual, { stance: def.visual.stance ?? 0 });
+    this.scene.add(this.view.group);
+    this.carKey = key;
+  }
+  private carKey = '';
+
+  currentCar(): OwnedCar {
+    return this.save.garage.cars.find((c) => c.uid === this.save.garage.selected) ?? this.save.garage.cars[0];
+  }
+
+  private async spawnCar(): Promise<void> {
+    const loc = this.location!;
+    await this.ensureCar();
+    if (!this.vehicle) return;
+    const owned = this.currentCar();
     this.vehicle.assists = this.save.settings.assists;
     const showcase = loc.track.def.showcase as { x: number; z: number; yaw: number } | undefined;
-    const sp = this.state.is('title') && showcase ? showcase : loc.track.def.spawn;
+    let sp = (this.state.is('title') || this.state.is('menu')) && showcase ? showcase : loc.track.def.spawn;
+    if (this.session?.mode === 'drift' && this.state.is('loading')) {
+      // events start from a rolling grid slot just behind the start line
+      const road = loc.track.roads[0];
+      const p = road.samples[road.samples.length - 40];
+      sp = { x: p.x, z: p.z, yaw: Math.atan2(p.tx, p.tz) };
+    }
     this.vehicle.reset(loc.track, sp.x, sp.z, sp.yaw);
     for (let i = 0; i < 60; i++) this.vehicle.step(PHYSICS_DT, emptyInput(), loc.track);
     this.vehicle.prevPosition.copy(this.vehicle.position);
     this.vehicle.prevQuaternion.copy(this.vehicle.quaternion);
     const n = trackName(loc.id);
-    this.hud.configure(this.vehicle, loc.track, { location: n.name.toUpperCase(), jp: n.jp, car: carName(owned.carId) }, this.save.settings);
+    this.hud.configure(this.vehicle, loc.track, { location: n.name.toUpperCase(), jp: n.jp, car: carName(this.vehicle.spec.id) }, this.save.settings);
     this.cam.snap();
+    void owned;
   }
 
   resetCar(): void {
@@ -410,7 +695,20 @@ export class Game {
     v.step(dt, inp, loc.track);
     inp.shiftUp = false;
     inp.shiftDown = false;
+    if (driving) {
+      const l = loc.track.locate(v.position.x, v.position.z);
+      if (l) this.playerSCache = l.s;
+      this.sessionTime += dt;
+      this.save.stats.distance += v.telemetry.speed * dt;
+      if (this.session?.mode === 'openroad' || this.session?.mode === 'practice') this.chain.update(dt, v);
+      this.mode?.step(dt);
+      this.traffic?.update(dt, v, this.playerSCache);
+    }
     for (const imp of v.impacts) {
+      if (driving && imp.speed > 2.5 && imp.kind === 'wall') {
+        this.chain.break(imp.material === 'tire' ? 'TIRE WALL' : 'WALL');
+        this.mode?.onImpact(imp.speed, imp.material);
+      }
       this.cam.bump(Math.min(1, imp.speed / 10));
       this.audio.impact(imp.speed, imp.material);
       this.input.rumble(Math.min(1, imp.speed / 12), 0.5, 180);
@@ -502,7 +800,15 @@ export class Game {
         this.assistFlags.STM = a.stability && Math.abs(t.driftAngle) > 0.15;
         this.assistFlags.DRIFT = a.driftAssist > 0 && t.rearSlip > 0.2;
         this.hud.update(v, this.save.settings, dt, this.assistFlags);
+        this.chainHud.update(this.chain, dt);
+        const m = this.mode as (ModeController & { sessionMoney?: number }) | null;
+        this.chainHud.setMoney(m?.sessionMoney ?? this.chain.stats.banked * 0.03);
+        this.mode?.frame(dt);
+        if (this.mode?.done && !this.endTimer) this.endTimer = 1;
       }
+      // animate the sea
+      this.seaT += dt;
+      for (const o of this.animated) (o.userData as { animate: (t: number) => void }).animate(this.seaT);
       this.desat = Math.max(0, this.desat - dt * 1.5);
       this.post.setLook(this.env.look.night, t.speed, this.desat);
     }
@@ -523,7 +829,24 @@ export class Game {
       state: () => this.state.current,
       telemetry: () => this.vehicle?.telemetry,
       position: () => this.vehicle?.position.toArray(),
-      drive: (id = 'minami') => this.startDriving(id),
+      drive: (id = 'minami') => this.startSession({ mode: id === 'skidpad' ? 'practice' : id === 'openroad' ? 'openroad' : 'drift', location: id, event: id === 'skidpad' || id === 'openroad' ? 'free' : 'driftattack' }),
+      session: (cfg: SessionConfig) => this.startSession(cfg),
+      end: () => this.endSession(),
+      money: () => this.save.profile.credits,
+      result: () => this.flow.lastResult,
+      chain: () => ({ banked: this.chain.stats.banked, value: this.chain.value, mult: this.chain.multiplier }),
+      traffic: () => this.traffic?.activeCount ?? 0,
+      /** place the car at distance s along the main road (tests/screenshots) */
+      teleport: (sAlong: number, speed = 0) => {
+        const t = this.location?.track;
+        if (!t || !this.vehicle) return;
+        const road = t.roads[0];
+        const p = road.samples[Math.floor((sAlong / road.length) * road.samples.length) % road.samples.length];
+        const off = (this.session?.mode === 'openroad' ? p.halfWidth * 0.5 : 0);
+        this.vehicle.reset(t, p.x + p.lx * off, p.z + p.lz * off, Math.atan2(p.tx, p.tz));
+        if (speed) this.vehicle.launch(speed);
+        this.cam.snap();
+      },
       setInput: (inp: Partial<DriverInput> | null) => (this.input.override = inp),
       camera: (mode: number) => {
         this.cam.mode = mode;

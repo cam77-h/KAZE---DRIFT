@@ -1,64 +1,945 @@
 {
-  "sakura_s15": {
-    "id": "sakura_s15",
-    "physics": {
-      "id": "sakura_s15",
-      "mass": 1250,
-      "cgToFront": 1.25,
-      "cgToRear": 1.35,
-      "trackFront": 1.48,
-      "trackRear": 1.47,
-      "wheelRadius": 0.317,
-      "wheelInertia": 1.1,
-      "inertiaScale": 1.0,
-      "length": 4.45,
-      "width": 1.695,
-      "height": 1.285,
-      "layout": "RWD",
-      "frontTorqueShare": 0,
-      "engine": {
-        "name": "KS20 2.0L turbo I4",
-        "idleRpm": 850,
-        "redlineRpm": 7200,
-        "limiterRpm": 7600,
-        "inertia": 0.17,
-        "torqueCurve": [[800, 150], [1500, 178], [2500, 220], [3500, 268], [4800, 284], [5600, 282], [6400, 272], [7000, 250], [7600, 205]],
-        "engineBrake": 70,
-        "turbo": { "spoolRpm": 2400, "fullBoostRpm": 4200, "lag": 0.55, "boostTorqueShare": 0.38, "maxBoostBar": 0.9 },
-        "sound": "i4turbo",
-        "cylinders": 4
-      },
-      "gearbox": { "ratios": [3.321, 1.902, 1.308, 1.0, 0.759, 0.634], "reverse": 3.382, "final": 4.083, "shiftTime": 0.16, "efficiency": 0.9 },
-      "clutchTorque": 470,
-      "diff": { "type": "lsd15", "preload": 60, "accelLock": 0.35, "decelLock": 0.15 },
-      "suspension": {
-        "springFront": 42000, "springRear": 38000,
-        "bumpFront": 3300, "bumpRear": 3000,
-        "reboundFront": 4400, "reboundRear": 4000,
-        "arbFront": 16000, "arbRear": 9000,
-        "travel": 0.28,
-        "cgHeight": 0.48
-      },
-      "steerLock": 0.62,
-      "brakeTorque": 6400,
-      "brakeBias": 0.68,
-      "handbrakeTorque": 3200,
-      "dragArea": 0.62,
-      "downforceFront": 0.02,
-      "downforceRear": 0.03,
-      "tireFront": "sport",
-      "tireRear": "sport",
-      "falloffFront": 0.5,
-      "falloffRear": 1.0,
-      "gripFront": 1.0,
-      "gripRear": 1.075
-    },
-    "visual": {
-      "model": "s15",
-      "glb": "assets/cars/sakura_s15.glb",
-      "defaultPaint": "#c8102e",
-      "wheel": "kumo6",
-      "wheelDiameterIn": 17
+ "_base": {
+  "mass": 1250,
+  "cgToFront": 1.25,
+  "cgToRear": 1.35,
+  "trackFront": 1.48,
+  "trackRear": 1.47,
+  "wheelRadius": 0.317,
+  "wheelInertia": 1.1,
+  "inertiaScale": 1.0,
+  "length": 4.45,
+  "width": 1.695,
+  "height": 1.285,
+  "layout": "RWD",
+  "frontTorqueShare": 0,
+  "engine": {
+   "name": "KS20 2.0L turbo I4",
+   "idleRpm": 850,
+   "redlineRpm": 7200,
+   "limiterRpm": 7600,
+   "inertia": 0.17,
+   "torqueCurve": [
+    [
+     800,
+     150
+    ],
+    [
+     1500,
+     178
+    ],
+    [
+     2500,
+     220
+    ],
+    [
+     3500,
+     268
+    ],
+    [
+     4800,
+     284
+    ],
+    [
+     5600,
+     282
+    ],
+    [
+     6400,
+     272
+    ],
+    [
+     7000,
+     250
+    ],
+    [
+     7600,
+     205
+    ]
+   ],
+   "engineBrake": 70,
+   "turbo": {
+    "spoolRpm": 2400,
+    "fullBoostRpm": 4200,
+    "lag": 0.55,
+    "boostTorqueShare": 0.38,
+    "maxBoostBar": 0.9
+   },
+   "sound": "i4turbo",
+   "cylinders": 4
+  },
+  "gearbox": {
+   "ratios": [
+    3.321,
+    1.902,
+    1.308,
+    1.0,
+    0.759,
+    0.634
+   ],
+   "reverse": 3.382,
+   "final": 4.083,
+   "shiftTime": 0.16,
+   "efficiency": 0.9
+  },
+  "clutchTorque": 470,
+  "diff": {
+   "type": "lsd15",
+   "preload": 60,
+   "accelLock": 0.35,
+   "decelLock": 0.15
+  },
+  "suspension": {
+   "springFront": 42000,
+   "springRear": 38000,
+   "bumpFront": 3300,
+   "bumpRear": 3000,
+   "reboundFront": 4400,
+   "reboundRear": 4000,
+   "arbFront": 16000,
+   "arbRear": 9000,
+   "travel": 0.28,
+   "cgHeight": 0.48
+  },
+  "steerLock": 0.62,
+  "brakeTorque": 6400,
+  "brakeBias": 0.68,
+  "handbrakeTorque": 3200,
+  "dragArea": 0.62,
+  "downforceFront": 0.02,
+  "downforceRear": 0.03,
+  "tireFront": "sport",
+  "tireRear": "sport",
+  "falloffFront": 0.5,
+  "falloffRear": 1.0,
+  "gripFront": 1.0,
+  "gripRear": 1.075
+ },
+ "takumi_ae": {
+  "physics": {
+   "mass": 950,
+   "layout": "RWD",
+   "engine": {
+    "name": "4A 1.6L NA I4",
+    "idleRpm": 900,
+    "redlineRpm": 7600,
+    "limiterRpm": 8000,
+    "inertia": 0.12,
+    "torqueCurve": [
+     [
+      800,
+      95
+     ],
+     [
+      2000,
+      118
+     ],
+     [
+      3500,
+      138
+     ],
+     [
+      5200,
+      149
+     ],
+     [
+      6600,
+      140
+     ],
+     [
+      7600,
+      118
+     ],
+     [
+      8000,
+      100
+     ]
+    ],
+    "engineBrake": 50,
+    "sound": "i4na",
+    "cylinders": 4
+   },
+   "gearbox": {
+    "ratios": [
+     3.587,
+     2.022,
+     1.384,
+     1.0,
+     0.861
+    ],
+    "reverse": 3.4,
+    "final": 4.3,
+    "shiftTime": 0.17,
+    "efficiency": 0.9
+   },
+   "clutchTorque": 260,
+   "diff": {
+    "type": "lsd15",
+    "preload": 40,
+    "accelLock": 0.3,
+    "decelLock": 0.12
+   },
+   "suspension": {
+    "springFront": 30000,
+    "springRear": 27000,
+    "bumpFront": 2600,
+    "bumpRear": 2400,
+    "reboundFront": 3400,
+    "reboundRear": 3100,
+    "arbFront": 12000,
+    "arbRear": 6000,
+    "travel": 0.26,
+    "cgHeight": 0.47
+   },
+   "steerLock": 0.6,
+   "brakeTorque": 4600,
+   "handbrakeTorque": 2400,
+   "dragArea": 0.6,
+   "tireFront": "street",
+   "tireRear": "street",
+   "cgToFront": 1.14,
+   "cgToRear": 1.232,
+   "trackFront": 1.415,
+   "trackRear": 1.434,
+   "wheelRadius": 0.297,
+   "length": 4.2,
+   "width": 1.829,
+   "height": 1.31
+  },
+  "visual": {
+   "model": "glb",
+   "defaultPaint": "#f2efe6",
+   "defaultFinish": "gloss",
+   "glb": {
+    "file": "player-cars/takumi_ae86_ivofficial.glb",
+    "forward": "+z",
+    "length": 4.2,
+    "paintKey": [
+     0.93,
+     0.93,
+     0.93
+    ],
+    "paintTolerance": 0.42,
+    "strip": [
+     {
+      "node": "Car",
+      "end": "front",
+      "yMin": 0.455,
+      "yMax": 0.51,
+      "halfX": 0.3,
+      "depth": 0.14,
+      "maxArea": 0.0005
+     },
+     {
+      "node": "Car",
+      "end": "front",
+      "yMin": 0.335,
+      "yMax": 0.395,
+      "halfX": 0.32,
+      "depth": 0.14,
+      "maxArea": 0.0005
+     },
+     {
+      "node": "Car",
+      "end": "rear",
+      "yMin": 0.632,
+      "yMax": 0.675,
+      "halfX": 0.33,
+      "depth": 0.2,
+      "maxArea": 0.0005
+     }
+    ]
+   },
+   "stance": 0.03
+  },
+  "price": 0,
+  "level": 1,
+  "archetype": "80s hatchback",
+  "signature": "Panda two-tone, light and tossable"
+ },
+ "kumo_sedan": {
+  "physics": {
+   "mass": 1400,
+   "layout": "RWD",
+   "engine": {
+    "name": "KJ25 2.5L NA I6",
+    "idleRpm": 750,
+    "redlineRpm": 6600,
+    "limiterRpm": 7000,
+    "inertia": 0.18,
+    "torqueCurve": [
+     [
+      800,
+      170
+     ],
+     [
+      2000,
+      205
+     ],
+     [
+      3500,
+      232
+     ],
+     [
+      4800,
+      240
+     ],
+     [
+      6000,
+      222
+     ],
+     [
+      6600,
+      200
+     ],
+     [
+      7000,
+      180
+     ]
+    ],
+    "engineBrake": 60,
+    "sound": "i6na",
+    "cylinders": 6
+   },
+   "gearbox": {
+    "ratios": [
+     3.28,
+     1.89,
+     1.3,
+     1.0,
+     0.75
+    ],
+    "reverse": 3.4,
+    "final": 4.1,
+    "shiftTime": 0.17,
+    "efficiency": 0.9
+   },
+   "clutchTorque": 330,
+   "diff": {
+    "type": "open",
+    "preload": 0,
+    "accelLock": 0,
+    "decelLock": 0
+   },
+   "steerLock": 0.6,
+   "tireFront": "street",
+   "tireRear": "street",
+   "dragArea": 0.66,
+   "cgToFront": 1.332,
+   "cgToRear": 1.438,
+   "trackFront": 1.626,
+   "trackRear": 1.566,
+   "wheelRadius": 0.295,
+   "length": 4.5,
+   "width": 2.0,
+   "height": 1.31
+  },
+  "visual": {
+   "model": "glb",
+   "defaultPaint": "#8a8f96",
+   "defaultFinish": "metallic",
+   "glb": {
+    "file": "player-cars/sports_car_2_quaternius.glb",
+    "forward": "+z",
+    "length": 4.5,
+    "wheels": [
+     "SportsCar_FrontLeftWheel",
+     "SportsCar_FrontRightWheel",
+     "SportsCar_BackWheels",
+     "SportsCar_BackWheels"
+    ],
+    "paintMaterials": [
+     "Orange",
+     "DarkOrange"
+    ],
+    "headMaterials": [
+     "Headlights"
+    ],
+    "tailMaterials": [
+     "TailLights"
+    ]
+   },
+   "stance": 0.025
+  },
+  "price": 20000,
+  "level": 1,
+  "archetype": "4-door sport sedan",
+  "signature": "Cheap, heavy, open diff: a proper beater"
+ },
+ "sakura_18": {
+  "physics": {
+   "mass": 1220,
+   "layout": "RWD",
+   "engine": {
+    "name": "KS20 2.0L turbo I4 (early)",
+    "idleRpm": 850,
+    "redlineRpm": 7000,
+    "limiterRpm": 7400,
+    "inertia": 0.17,
+    "torqueCurve": [
+     [
+      800,
+      140
+     ],
+     [
+      2000,
+      180
+     ],
+     [
+      3000,
+      238
+     ],
+     [
+      4000,
+      262
+     ],
+     [
+      5200,
+      256
+     ],
+     [
+      6000,
+      240
+     ],
+     [
+      6800,
+      215
+     ],
+     [
+      7400,
+      175
+     ]
+    ],
+    "engineBrake": 65,
+    "sound": "i4turbo",
+    "cylinders": 4,
+    "turbo": {
+     "spoolRpm": 2500,
+     "fullBoostRpm": 4000,
+     "lag": 0.6,
+     "boostTorqueShare": 0.38,
+     "maxBoostBar": 0.8
     }
-  }
+   },
+   "gearbox": {
+    "ratios": [
+     3.321,
+     1.902,
+     1.308,
+     1.0,
+     0.759
+    ],
+    "reverse": 3.4,
+    "final": 4.11,
+    "shiftTime": 0.17,
+    "efficiency": 0.9
+   },
+   "tireFront": "sport",
+   "tireRear": "sport",
+   "cgToFront": 1.182,
+   "cgToRear": 1.276,
+   "trackFront": 1.465,
+   "trackRear": 1.465,
+   "wheelRadius": 0.319,
+   "length": 4.5,
+   "width": 1.979,
+   "height": 1.294
+  },
+  "visual": {
+   "model": "glb",
+   "defaultPaint": "#7a1418",
+   "defaultFinish": "metallic",
+   "glb": {
+    "file": "player-cars/sakura_180sx_grzybek.glb",
+    "forward": "+z",
+    "length": 4.5,
+    "paintMaterials": [
+     "Body.001"
+    ],
+    "plates": [
+     "Plate"
+    ],
+    "headMaterials": [
+     "Headlights"
+    ],
+    "tailMaterials": [
+     "Brakelights.001",
+     "Tailights"
+    ]
+   },
+   "stance": 0.015
+  },
+  "price": 35000,
+  "level": 1,
+  "archetype": "S-chassis hatch",
+  "signature": "Pop-up lights, the drift scene's favourite hatch"
+ },
+ "hoshi_gt": {
+  "physics": {
+   "mass": 1450,
+   "layout": "RWD",
+   "engine": {
+    "name": "VQ30 3.0L NA V6",
+    "idleRpm": 750,
+    "redlineRpm": 6800,
+    "limiterRpm": 7200,
+    "inertia": 0.16,
+    "torqueCurve": [
+     [
+      800,
+      180
+     ],
+     [
+      2000,
+      240
+     ],
+     [
+      3500,
+      285
+     ],
+     [
+      4800,
+      300
+     ],
+     [
+      6000,
+      285
+     ],
+     [
+      6800,
+      265
+     ],
+     [
+      7200,
+      245
+     ]
+    ],
+    "engineBrake": 70,
+    "sound": "v6na",
+    "cylinders": 6
+   },
+   "gearbox": {
+    "ratios": [
+     3.79,
+     2.32,
+     1.62,
+     1.27,
+     1.0,
+     0.79
+    ],
+    "reverse": 3.4,
+    "final": 3.54,
+    "shiftTime": 0.17,
+    "efficiency": 0.9
+   },
+   "clutchTorque": 480,
+   "tireFront": "sport",
+   "tireRear": "sport",
+   "dragArea": 0.64,
+   "cgToFront": 1.251,
+   "cgToRear": 1.352,
+   "trackFront": 1.532,
+   "trackRear": 1.614,
+   "wheelRadius": 0.349,
+   "length": 4.4,
+   "width": 2.0,
+   "height": 1.451
+  },
+  "visual": {
+   "model": "glb",
+   "defaultPaint": "#d9d6cc",
+   "defaultFinish": "pearl",
+   "glb": {
+    "file": "player-cars/sports_car_1_quaternius.glb",
+    "forward": "+z",
+    "length": 4.4,
+    "wheels": [
+     "FrontWheel_L",
+     "FrontWheel_R",
+     "BackWheels",
+     "BackWheels"
+    ],
+    "headMaterials": [
+     "Headlights"
+    ],
+    "tailMaterials": [
+     "BrakeLight"
+    ],
+    "paintKey": [
+     0.855,
+     0.655,
+     0.0
+    ],
+    "paintTolerance": 0.16
+   },
+   "stance": 0.045
+  },
+  "price": 45000,
+  "level": 1,
+  "archetype": "90s sports coupe",
+  "signature": "Deep V6 note, wide rear haunches"
+ },
+ "sento_rs": {
+  "physics": {
+   "mass": 1100,
+   "layout": "RWD",
+   "engine": {
+    "name": "SR18 1.8L turbo I4",
+    "idleRpm": 900,
+    "redlineRpm": 7400,
+    "limiterRpm": 7800,
+    "inertia": 0.13,
+    "torqueCurve": [
+     [
+      800,
+      120
+     ],
+     [
+      2000,
+      170
+     ],
+     [
+      3200,
+      225
+     ],
+     [
+      4400,
+      240
+     ],
+     [
+      5600,
+      232
+     ],
+     [
+      6600,
+      210
+     ],
+     [
+      7400,
+      170
+     ]
+    ],
+    "engineBrake": 55,
+    "sound": "i4turbo",
+    "cylinders": 4,
+    "turbo": {
+     "spoolRpm": 2400,
+     "fullBoostRpm": 3800,
+     "lag": 0.45,
+     "boostTorqueShare": 0.4,
+     "maxBoostBar": 1.0
+    }
+   },
+   "gearbox": {
+    "ratios": [
+     3.13,
+     2.05,
+     1.48,
+     1.16,
+     0.97,
+     0.81
+    ],
+    "reverse": 3.4,
+    "final": 4.3,
+    "shiftTime": 0.17,
+    "efficiency": 0.9
+   },
+   "tireFront": "sport",
+   "tireRear": "sport",
+   "dragArea": 0.58,
+   "cgToFront": 1.258,
+   "cgToRear": 1.359,
+   "trackFront": 1.514,
+   "trackRear": 1.441,
+   "wheelRadius": 0.293,
+   "length": 4.1,
+   "width": 1.954,
+   "height": 1.256
+  },
+  "visual": {
+   "model": "glb",
+   "defaultPaint": "#1f6feb",
+   "defaultFinish": "metallic",
+   "glb": {
+    "file": "player-cars/sports_car_3_quaternius.glb",
+    "forward": "+z",
+    "length": 4.1,
+    "wheels": [
+     "SportsCar2_FrontLeftWheel",
+     "SportsCar2_FrontRightWheel",
+     "SportsCar2_BackWheels",
+     "SportsCar2_BackWheels"
+    ],
+    "paintMaterials": [
+     "White"
+    ],
+    "headMaterials": [
+     "Headlights"
+    ],
+    "tailMaterials": [
+     "TailLights"
+    ]
+   },
+   "stance": 0.02
+  },
+  "price": 55000,
+  "level": 1,
+  "archetype": "compact sport coupe",
+  "signature": "Light, short and eager to rotate"
+ },
+ "kaze_r7_87": {
+  "physics": {
+   "mass": 1220,
+   "layout": "RWD",
+   "engine": {
+    "name": "13B 1.3L turbo twin-rotor",
+    "idleRpm": 900,
+    "redlineRpm": 7000,
+    "limiterRpm": 7400,
+    "inertia": 0.11,
+    "torqueCurve": [
+     [
+      800,
+      130
+     ],
+     [
+      2000,
+      190
+     ],
+     [
+      3000,
+      245
+     ],
+     [
+      4000,
+      265
+     ],
+     [
+      5500,
+      255
+     ],
+     [
+      6500,
+      232
+     ],
+     [
+      7000,
+      215
+     ],
+     [
+      7400,
+      180
+     ]
+    ],
+    "engineBrake": 45,
+    "sound": "rotary",
+    "cylinders": 4,
+    "turbo": {
+     "spoolRpm": 2200,
+     "fullBoostRpm": 3600,
+     "lag": 0.5,
+     "boostTorqueShare": 0.4,
+     "maxBoostBar": 0.7
+    }
+   },
+   "gearbox": {
+    "ratios": [
+     3.48,
+     2.02,
+     1.39,
+     1.0,
+     0.72
+    ],
+    "reverse": 3.4,
+    "final": 4.1,
+    "shiftTime": 0.17,
+    "efficiency": 0.9
+   },
+   "tireFront": "sport",
+   "tireRear": "sport",
+   "dragArea": 0.6,
+   "cgToFront": 1.172,
+   "cgToRear": 1.266,
+   "trackFront": 1.488,
+   "trackRear": 1.488,
+   "wheelRadius": 0.315,
+   "length": 4.3,
+   "width": 1.785,
+   "height": 1.268
+  },
+  "visual": {
+   "model": "glb",
+   "defaultPaint": "#e8e4da",
+   "defaultFinish": "gloss",
+   "glb": {
+    "file": "player-cars/kaze_rx7fc_ivofficial.glb",
+    "forward": "+z",
+    "length": 4.3,
+    "wheels": [
+     "FL_WHEEL",
+     "FR_WHEEL",
+     "RL_WHEEL",
+     "RR_WHEEL"
+    ],
+    "paintMaterials": [
+     "Body_paint"
+    ],
+    "hide": [
+     "logos"
+    ],
+    "headMaterials": [
+     "Emission.001"
+    ],
+    "popups": "Headlights"
+   },
+   "stance": 0.025
+  },
+  "price": 60000,
+  "level": 5,
+  "archetype": "80s rotary coupe",
+  "signature": "Pop-up headlights and a rotary brap"
+ },
+ "sakura_s15": {
+  "physics": {},
+  "visual": {
+   "model": "s15",
+   "defaultPaint": "#c8102e",
+   "defaultFinish": "metallic",
+   "wheel": "kumo6",
+   "wheelDiameterIn": 17,
+   "stance": 0.0
+  },
+  "price": 80000,
+  "level": 8,
+  "archetype": "S-chassis coupe",
+  "signature": "The car everyone learns to drift in"
+ },
+ "raiden_34": {
+  "physics": {
+   "mass": 1560,
+   "layout": "AWD",
+   "frontTorqueShare": 0.3,
+   "engine": {
+    "name": "RB26 2.6L twin-turbo I6",
+    "idleRpm": 900,
+    "redlineRpm": 7500,
+    "limiterRpm": 8000,
+    "inertia": 0.19,
+    "torqueCurve": [
+     [
+      800,
+      190
+     ],
+     [
+      2000,
+      260
+     ],
+     [
+      3000,
+      330
+     ],
+     [
+      4400,
+      392
+     ],
+     [
+      5500,
+      380
+     ],
+     [
+      6800,
+      340
+     ],
+     [
+      7500,
+      300
+     ],
+     [
+      8000,
+      260
+     ]
+    ],
+    "engineBrake": 75,
+    "sound": "i6tt",
+    "cylinders": 6,
+    "turbo": {
+     "spoolRpm": 2600,
+     "fullBoostRpm": 4200,
+     "lag": 0.6,
+     "boostTorqueShare": 0.45,
+     "maxBoostBar": 1.0
+    }
+   },
+   "gearbox": {
+    "ratios": [
+     3.83,
+     2.36,
+     1.69,
+     1.31,
+     1.0,
+     0.79
+    ],
+    "reverse": 3.4,
+    "final": 3.55,
+    "shiftTime": 0.17,
+    "efficiency": 0.9
+   },
+   "clutchTorque": 620,
+   "frontDiff": {
+    "type": "open",
+    "preload": 0,
+    "accelLock": 0,
+    "decelLock": 0
+   },
+   "brakeTorque": 7600,
+   "tireFront": "sport",
+   "tireRear": "sport",
+   "dragArea": 0.68,
+   "suspension": {
+    "springFront": 48000,
+    "springRear": 44000,
+    "bumpFront": 3600,
+    "bumpRear": 3300,
+    "reboundFront": 4700,
+    "reboundRear": 4300,
+    "arbFront": 20000,
+    "arbRear": 11000,
+    "travel": 0.28,
+    "cgHeight": 0.5
+   },
+   "cgToFront": 1.287,
+   "cgToRear": 1.39,
+   "trackFront": 1.495,
+   "trackRear": 1.505,
+   "wheelRadius": 0.342,
+   "length": 4.6,
+   "width": 1.796,
+   "height": 1.365
+  },
+  "visual": {
+   "model": "glb",
+   "defaultPaint": "#1d3a8a",
+   "defaultFinish": "metallic",
+   "glb": {
+    "file": "player-cars/raiden_r34_davidsirera.glb",
+    "forward": "+z",
+    "length": 4.6,
+    "paintMaterials": [
+     "chasis",
+     "chasis_NONE"
+    ],
+    "headMaterials": [
+     "light"
+    ],
+    "tailMaterials": [
+     "redlight"
+    ]
+   },
+   "stance": 0.015
+  },
+  "price": 150000,
+  "level": 15,
+  "archetype": "90s GT coupe (AWD)",
+  "signature": "Round quad taillights, AWD grip monster"
+ }
 }

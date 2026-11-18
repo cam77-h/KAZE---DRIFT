@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0: Update 2 (steps 1–4 of 7)
+
+- **Real 3D models.** Seven imported player cars (Takumi AE starter, Kumo Sedan, Sakura 18 Targa, Hoshi GT, Sento RS, Kaze R7 '87, Raiden 34) plus the procedural Sakura S15, and 20 traffic models (Kenney Car Kit and others). One `CarModelLoader` handles scale, orientation, grounding, wheel pivots, paint, fictional plates, badge removal and lights, and each car's physics geometry is fitted to its model. `/model-viewer.html` debug page; in-game Settings → Credits.
+- **Cars look good.** Clearcoat paint with gloss / metallic flake / pearl / matte / satin / chrome / candy finishes (including on atlas-textured models), tinted glass, soft contact shadows, stance, SSAO from Medium up.
+- **New flow.** Title → main menu (Play, Garage, Dealer, Records, Settings, How to Drift) → mode select → car select → event → drive → results, with level / money / SP on every menu screen.
+- **Open Road.** An 8.9 km loop (town, Wangan expressway, Akagiri touge, Shiokaze coast with a tunnel), with left-hand AI traffic that brakes and honks, near misses, 4 drift zones, 2 speed traps, near-miss alleys and a danger sign. Money accrues as you drive; End Run shows the results.
+- **Drift Track.** Minami Drift Park, Minami Reverse, Tsukinami Raceway and Port Gymkhana, each with Drift Attack (auto-placed glowing clipping points, line/angle/proximity judging), Time Attack (3 laps, sectors, saved ghost) and Tandem Chase (scripted lead car, Win / OMT / Lose). Medals, first-time medal bonuses, top-10 records.
+- **Skill chain.** Drift tiers, transitions, e-brake turns, near misses, Daredevil, clipping points, wreckage, airtime, speed. ×1–×10 multiplier with colour tiers, banking ring, popups, and a dramatic CHAIN BROKEN (flash, desaturation, glass crack).
+- **Economy.** ¥ money, XP and driver levels, skill points. `economy.json` is tuned by a scripted-driver pacing test. Dealer with level gates and 60% sell-back; a skill tree with 15 ranks; a milestone celebration every 5 levels.
+- **Save v3** migrates Phase 1 saves without losing anything (the new starter car is added alongside).
+- 50 unit tests; `tests/smoke/update2.cjs` drives menus → Open Road → results.
+
 ## 0.2.0: Phase 1, Foundation
 
 - Vite + TypeScript (strict) + Three.js project. It builds to a static site in `dist/`, and a GitHub Actions workflow tests, builds and deploys `main` to GitHub Pages.

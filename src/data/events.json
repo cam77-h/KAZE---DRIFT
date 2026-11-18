@@ -1,0 +1,27 @@
+{
+  "_note": "Drift Track events per venue: medal targets (scores; time attack in seconds per lap), laps, tandem lead car.",
+  "minami": {
+    "driftattack": { "bronze": 12000, "silver": 28000, "gold": 50000, "platinum": 80000 },
+    "timeattack": { "bronze": 75, "silver": 64, "gold": 57, "platinum": 52 },
+    "tandem": { "bronze": 8000, "silver": 18000, "gold": 32000, "platinum": 52000 },
+    "laps": 3, "leadCar": "sakura_s15"
+  },
+  "minami_rev": {
+    "driftattack": { "bronze": 12000, "silver": 28000, "gold": 50000, "platinum": 80000 },
+    "timeattack": { "bronze": 76, "silver": 65, "gold": 58, "platinum": 53 },
+    "tandem": { "bronze": 8000, "silver": 18000, "gold": 32000, "platinum": 52000 },
+    "laps": 3, "leadCar": "sakura_s15"
+  },
+  "tsukinami": {
+    "driftattack": { "bronze": 18000, "silver": 40000, "gold": 70000, "platinum": 110000 },
+    "timeattack": { "bronze": 105, "silver": 92, "gold": 84, "platinum": 78 },
+    "tandem": { "bronze": 12000, "silver": 26000, "gold": 45000, "platinum": 72000 },
+    "laps": 3, "leadCar": "sakura_s15"
+  },
+  "port": {
+    "driftattack": { "bronze": 10000, "silver": 24000, "gold": 42000, "platinum": 68000 },
+    "timeattack": { "bronze": 95, "silver": 82, "gold": 75, "platinum": 69 },
+    "tandem": { "bronze": 7000, "silver": 16000, "gold": 28000, "platinum": 46000 },
+    "laps": 3, "leadCar": "sakura_s15"
+  }
+}

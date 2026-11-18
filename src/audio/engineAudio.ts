@@ -239,6 +239,55 @@ export class CarAudio {
     s.stop(ctx.currentTime + 0.7);
   }
 
+  /** One-shot effects: chain break (glass crack), bank chime, stars, records, honks. */
+  sfx(kind: 'crack' | 'bank' | 'star' | 'record' | 'honk' | 'checkpoint'): void {
+    if (!this.ctx || !this.started) return;
+    const ctx = this.ctx;
+    const t0 = ctx.currentTime;
+    const tone = (f: number, at: number, dur: number, type: OscillatorType = 'triangle', vol = 0.08) => {
+      const o = ctx.createOscillator();
+      o.type = type;
+      o.frequency.setValueAtTime(f, t0 + at);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0 + at);
+      g.gain.exponentialRampToValueAtTime(vol, t0 + at + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + dur);
+      o.connect(g).connect(this.fxBus);
+      o.start(t0 + at);
+      o.stop(t0 + at + dur + 0.05);
+    };
+    if (kind === 'crack') {
+      // a sharp crack, then glassy shards ringing out
+      for (let i = 0; i < 6; i++) {
+        const src = ctx.createBufferSource();
+        src.buffer = this.noise;
+        const hp = ctx.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.value = 2500 + i * 900;
+        const g = ctx.createGain();
+        const at = i === 0 ? 0 : 0.02 + Math.random() * 0.25;
+        g.gain.setValueAtTime(i === 0 ? 0.5 : 0.12, t0 + at);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + (i === 0 ? 0.12 : 0.06));
+        src.connect(hp).connect(g).connect(this.fxBus);
+        src.start(t0 + at, Math.random());
+        src.stop(t0 + at + 0.2);
+      }
+      for (const f of [3200, 4700, 6100]) tone(f, 0.03, 0.5, 'sine', 0.025);
+    } else if (kind === 'bank') {
+      tone(880, 0, 0.18);
+      tone(1320, 0.07, 0.25);
+    } else if (kind === 'star') {
+      [660, 880, 1100, 1320].forEach((f, i) => tone(f, i * 0.07, 0.3));
+    } else if (kind === 'record') {
+      [523, 659, 784, 1046, 784, 1046].forEach((f, i) => tone(f, i * 0.11, 0.35, 'square', 0.05));
+    } else if (kind === 'honk') {
+      tone(392, 0, 0.45, 'square', 0.05);
+      tone(494, 0, 0.45, 'square', 0.04);
+    } else if (kind === 'checkpoint') {
+      tone(1500, 0, 0.12, 'square', 0.04);
+    }
+  }
+
   /** Short click for menus. */
   click(): void {
     if (!this.ctx || !this.started) return;

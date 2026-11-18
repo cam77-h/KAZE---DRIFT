@@ -1,12 +1,91 @@
 {
-  "_note": "Every display name in the game lives here so a private build can rename things without touching code. All names are fictional.",
-  "game": { "title": "KAZE DRIFT", "kana": "カゼドリフト", "kanji": "風" },
-  "cars": {
-    "sakura_s15": { "name": "Sakura S15", "maker": "Sakura Motors", "tagline": "The car everyone learns to drift in." }
+ "_note": "Every display name in the game lives here so a private build can rename things without touching code. All names are fictional.",
+ "game": {
+  "title": "KAZE DRIFT",
+  "kana": "カゼドリフト",
+  "kanji": "風"
+ },
+ "cars": {
+  "takumi_ae": {
+   "name": "Takumi AE",
+   "maker": "Takumi",
+   "tagline": "Light, honest, and the best teacher there is."
   },
-  "tracks": {
-    "skidpad": { "name": "Kaze Test Skidpad", "jp": "テストスキッドパッド", "region": "Proving ground" },
-    "minami": { "name": "Minami Drift Park", "jp": "南ドリフトパーク", "region": "Fukushiro Mountains" }
+  "kumo_sedan": {
+   "name": "Kumo Sedan",
+   "maker": "Kumo",
+   "tagline": "Four doors, open diff, no shame."
   },
-  "brands": ["Hoshi Racing", "Kumo Wheels", "Tora Works", "Shin-Kaze Engineering", "Yoru Garage", "Akane Oil", "Hayate Tires"]
+  "sakura_18": {
+   "name": "Sakura 18 Targa",
+   "maker": "Sakura Motors",
+   "tagline": "T-tops off, pop-ups up: the scene's favourite hatch."
+  },
+  "hoshi_gt": {
+   "name": "Hoshi GT",
+   "maker": "Hoshi",
+   "tagline": "A big V6 and a long, lazy slide."
+  },
+  "sento_rs": {
+   "name": "Sento RS",
+   "maker": "Sento",
+   "tagline": "Short wheelbase, quick hands required."
+  },
+  "kaze_r7_87": {
+   "name": "Kaze R7 '87",
+   "maker": "Kaze",
+   "tagline": "Pop-ups, rotary, and a lot of attitude."
+  },
+  "sakura_s15": {
+   "name": "Sakura S15",
+   "maker": "Sakura Motors",
+   "tagline": "The car everyone learns to drift in."
+  },
+  "raiden_34": {
+   "name": "Raiden 34",
+   "maker": "Raiden",
+   "tagline": "Twin turbos, all four wheels, no mercy."
+  }
+ },
+ "tracks": {
+  "skidpad": {
+   "name": "Kaze Test Skidpad",
+   "jp": "テストスキッドパッド",
+   "region": "Proving ground"
+  },
+  "minami": {
+   "name": "Minami Drift Park",
+   "jp": "南ドリフトパーク",
+   "region": "Fukushiro Mountains"
+  },
+  "minami_rev": {
+   "name": "Minami Drift Park (Reverse)",
+   "jp": "南ドリフトパーク・逆走",
+   "region": "Fukushiro Mountains"
+  },
+  "openroad": {
+   "name": "Open Road",
+   "jp": "オープンロード",
+   "region": "Kawabe · Akagiri · Shiokaze"
+  },
+  "tsukinami": {
+   "name": "Tsukinami Raceway",
+   "jp": "月並サーキット",
+   "region": "Tsukinami Valley"
+  },
+  "port": {
+   "name": "Port Gymkhana",
+   "jp": "港ジムカーナ",
+   "region": "Minato Harbour"
+  }
+ },
+ "brands": [
+  "Hoshi Racing",
+  "Kumo Wheels",
+  "Tora Works",
+  "Shin-Kaze Engineering",
+  "Yoru Garage",
+  "Akane Oil",
+  "Hayate Tires"
+ ]
 }

@@ -55,6 +55,10 @@ export interface TerrainDef {
   /** planar slope added to the terrain: h += tilt[0] * x + tilt[1] * z */
   tilt?: [number, number];
   ground?: SurfaceId;
+  /** smooth hills (cos² falloff) */
+  hills?: { x: number; z: number; r: number; h: number }[];
+  /** coastline: west of x0 the land falls into the sea over `width` metres */
+  sea?: { level: number; x0: number; width: number; depth: number };
 }
 
 export interface FreeWallDef {
@@ -299,6 +303,7 @@ export interface WallLine {
   closed: boolean;
   /** which side of the line faces the road (+1 = left of the polyline direction) */
   face: 1 | -1;
+  style?: string;
 }
 
 export class Track implements PhysicsWorld {
@@ -322,6 +327,18 @@ export class Track implements PhysicsWorld {
     const t = this.def.terrain;
     let h = t.base + this.noise.fbm(x / t.scale, z / t.scale, 4) * t.amp;
     if (t.tilt) h += t.tilt[0] * x + t.tilt[1] * z;
+    if (t.hills)
+      for (const hl of t.hills) {
+        const d = Math.hypot(x - hl.x, z - hl.z) / hl.r;
+        if (d < 1) {
+          const c = Math.cos(d * Math.PI * 0.5);
+          h += hl.h * c * c * (0.85 + 0.3 * this.noise.fbm(x / 120 + 3, z / 120 - 7, 3));
+        }
+      }
+    if (t.sea) {
+      const k = smoothstep(t.sea.x0 + t.sea.width * 0.5, t.sea.x0 - t.sea.width * 0.5, x + this.noise.fbm(z / 200, 1.7, 3) * 60);
+      h = h * (1 - k) + (t.sea.level - t.sea.depth) * k;
+    }
     if (t.rise) {
       const d = Math.hypot(x - t.rise.x, z - t.rise.z) - t.rise.r;
       if (d > 0) h += t.rise.height * (1 - Math.exp(-d / t.rise.falloff)) * (0.75 + 0.5 * this.noise.fbm(x / 90 + 17, z / 90 - 3, 3));
@@ -446,6 +463,20 @@ export class Track implements PhysicsWorld {
         this.wallLines.push({ points: pts, type: w.type, height: w.height ?? 1.0, closed: false, face: side > 0 ? -1 : 1 });
       }
     }
+    // tunnel walls are solid
+    const tun = this.def.tunnel as { from: number; to: number } | undefined;
+    if (tun && this.roads[0]) {
+      const S = this.roads[0].samples;
+      for (const side of [1, -1]) {
+        const pts: [number, number, number][] = [];
+        for (const p of S) {
+          if (p.s < tun.from || p.s > tun.to) continue;
+          const off = side * (p.halfWidth + 1.4);
+          pts.push([p.x + p.lx * off, p.y, p.z + p.lz * off]);
+        }
+        this.walls.addPolyline(pts.filter((_, i) => i % 2 === 0), 0.35, 7, 'concrete');
+      }
+    }
     for (const w of this.def.walls ?? []) {
       const r = w.radius ?? (w.type === 'tire' ? 0.45 : 0.35);
       if (w.circle) {
@@ -462,7 +493,7 @@ export class Track implements PhysicsWorld {
       } else if (w.points) {
         const pts = w.points.map((p) => [p[0], p.length > 2 ? p[1] : this.height(p[0], p[1]), p.length > 2 ? p[2] : p[1]] as [number, number, number]);
         this.walls.addPolyline(pts, r, w.height ?? 1.0, w.type, w.closed);
-        this.wallLines.push({ points: pts, type: w.type, height: w.height ?? 1.0, closed: !!w.closed, face: 1 });
+        this.wallLines.push({ points: pts, type: w.type, height: w.height ?? 1.0, closed: !!w.closed, face: 1, style: (w as { container?: boolean }).container ? 'container' : undefined });
       }
     }
   }

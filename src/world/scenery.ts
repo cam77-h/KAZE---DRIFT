@@ -51,6 +51,10 @@ export function buildScenery(track: Track, density: number): SceneryResult {
     group.add(startGantry(track));
     group.add(lightPoles(track, lamps));
   }
+  if (def.theme === 'port') {
+    group.add(portCranes(track, lamps));
+    if (def.cones) cones.push(...portCones(track));
+  }
   if (def.theme === 'skidpad') {
     group.add(skidpadMarkings(track, def.circles ?? []));
     group.add(controlTower(track, lamps));
@@ -394,5 +398,55 @@ function coneLayout(): Cone[] {
     if (i % 2 === 0) add(-58 + Math.cos(a) * 3, Math.sin(a) * 3);
   }
   for (let i = 0; i < 8; i++) add(-20 + i * 6, -60); // gate line
+  return out;
+}
+
+/** Two ship-to-shore gantry cranes on the quay and a row of floodlights. */
+function portCranes(track: Track, lamps: THREE.MeshStandardMaterial[]): THREE.Group {
+  const g = new THREE.Group();
+  const steel = new THREE.MeshStandardMaterial({ color: 0xd8b13a, metalness: 0.4, roughness: 0.5 });
+  for (const z of [-20, 90]) {
+    const crane = new THREE.Group();
+    for (const [x, zz] of [[0, -8], [0, 8], [16, -8], [16, 8]]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(1, 34, 1), steel);
+      leg.position.set(x, 17, zz);
+      crane.add(leg);
+    }
+    const boom = new THREE.Mesh(new THREE.BoxGeometry(70, 2.4, 3), steel);
+    boom.position.set(10, 34, 0);
+    const cab = new THREE.Mesh(new THREE.BoxGeometry(4, 3, 4), new THREE.MeshStandardMaterial({ color: 0x2b3440 }));
+    cab.position.set(20, 31, 0);
+    crane.add(boom, cab);
+    crane.traverse((o) => (o.castShadow = true));
+    crane.position.set(200, track.height(200, z), z);
+    g.add(crane);
+  }
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0x8a8f96, metalness: 0.5, roughness: 0.5 });
+  const lampMat = new THREE.MeshStandardMaterial({ color: 0xfff6d8, emissive: 0xfff2c0, emissiveIntensity: 0.2 });
+  lamps.push(lampMat);
+  for (const [x, z] of [[-190, -90], [-190, 180], [220, -90], [220, 180], [10, -95], [10, 185]]) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 22, 8), poleMat);
+    pole.position.set(x, track.height(x, z) + 11, z);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(3, 0.6, 1.2), lampMat);
+    head.position.set(x, track.height(x, z) + 22, z);
+    g.add(pole, head);
+  }
+  return g;
+}
+
+/** Gymkhana cones: gates at every corner of the course. */
+function portCones(track: Track): Cone[] {
+  const out: Cone[] = [];
+  const road = track.roads[0];
+  if (!road) return out;
+  const S = road.samples;
+  for (let i = 0; i < S.length; i += 9) {
+    const p = S[i];
+    if (Math.abs(p.curvature) < 1 / 45) continue;
+    const inside = Math.sign(p.curvature);
+    const lat = inside * (p.halfWidth + 0.6);
+    const home = new THREE.Vector3(p.x + p.lx * lat, 0, p.z + p.lz * lat);
+    out.push({ home, pos: home.clone(), vel: new THREE.Vector3(), rot: new THREE.Euler(), spin: 0, hit: false, index: out.length });
+  }
   return out;
 }
