@@ -277,14 +277,15 @@ function startGantry(track: Track): THREE.Group {
   beam.position.set(0, 7.2, 0);
   g.add(beam);
   for (const side of [1, -1]) {
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(span * 0.9, 2), new THREE.MeshStandardMaterial({ map: signTexture('南ドリフトパーク', 'MINAMI DRIFT PARK'), roughness: 0.6 }));
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(span * 0.9, 2), new THREE.MeshStandardMaterial({ map: signTexture('南ドリフトパーク', 'MINAMI DRIFT PARK', '#0d1a2b', '#f2efe6', '#e8202f', (span * 0.9) / 2), roughness: 0.6 }));
     sign.position.set(0, 7.2, side * 0.26);
     if (side < 0) sign.rotation.y = Math.PI;
     g.add(sign);
   }
   const y = track.height(p.x, p.z);
   g.position.set(p.x, y, p.z);
-  g.rotation.y = Math.atan2(p.lx, p.lz);
+  // local +X must run across the road (along the left normal)
+  g.rotation.y = Math.atan2(-p.lz, p.lx);
   return g;
 }
 

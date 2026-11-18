@@ -34,7 +34,7 @@ export function makeCarMaterials(color: string): CarMaterials {
     headLens: new THREE.MeshStandardMaterial({ color: 0x9aa3ad, metalness: 0.8, roughness: 0.12, emissive: 0xfff1d6, emissiveIntensity: 0, map: headlightTexture(), emissiveMap: headlightTexture() }),
     tailLens: new THREE.MeshStandardMaterial({ color: 0x7a0b10, metalness: 0.3, roughness: 0.18, emissive: 0xff1020, emissiveIntensity: 0.25, map: taillightTexture(), emissiveMap: taillightTexture() }),
     amber: new THREE.MeshStandardMaterial({ color: 0xc87a10, metalness: 0.2, roughness: 0.2, emissive: 0xff8a10, emissiveIntensity: 0 }),
-    reverse: new THREE.MeshStandardMaterial({ color: 0xdedede, metalness: 0.2, roughness: 0.15, emissive: 0xffffff, emissiveIntensity: 0 }),
+    reverse: new THREE.MeshStandardMaterial({ color: 0x5c6066, metalness: 0.7, roughness: 0.12, emissive: 0xffffff, emissiveIntensity: 0 }),
     seam: new THREE.MeshBasicMaterial({ color: 0x050506, transparent: true, opacity: 0.75, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
     grille: new THREE.MeshStandardMaterial({ map: honeycombTexture(), roughness: 0.6, metalness: 0.2, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
     carbon: new THREE.MeshStandardMaterial({ color: 0x1d1f22, metalness: 0.4, roughness: 0.35 }),
@@ -446,7 +446,12 @@ export function buildCarBody(shape: BodyShape, paintColor: string): CarModel {
   };
 
   add(buildBody(shape), [m.paint, m.trim, m.glass], 'body');
-  add(buildGreenhouse(shape), [m.paint, m.trim, m.glass], 'greenhouse');
+  const ghGeo = buildGreenhouse(shape);
+  add(ghGeo, [m.paint, m.trim, m.glass], 'greenhouse');
+  // headliner: the inside of the roof and pillars, seen through the glass from low angles
+  const headliner = new THREE.MeshStandardMaterial({ color: 0x2b2b2f, roughness: 0.95, side: THREE.BackSide });
+  const hidden = new THREE.MeshBasicMaterial({ visible: false });
+  add(ghGeo, [headliner, headliner, hidden], 'headliner', false);
 
   // interior visible through the glass (right-hand drive)
   const interior = new THREE.Group();

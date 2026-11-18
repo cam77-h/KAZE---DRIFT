@@ -275,7 +275,7 @@ export class Game {
     else {
       this.menus.showLoading(id);
       this.menus.setProgress(1);
-      this.resetCar();
+      this.spawnCar();
     }
     this.cam.mode = this.save.settings.gameplay.camera;
     this.cam.snap();
@@ -297,7 +297,8 @@ export class Game {
       this.scene.add(this.view.group);
     }
     this.vehicle.assists = this.save.settings.assists;
-    const sp = loc.track.def.spawn;
+    const showcase = loc.track.def.showcase as { x: number; z: number; yaw: number } | undefined;
+    const sp = this.state.is('title') && showcase ? showcase : loc.track.def.spawn;
     this.vehicle.reset(loc.track, sp.x, sp.z, sp.yaw);
     for (let i = 0; i < 60; i++) this.vehicle.step(PHYSICS_DT, emptyInput(), loc.track);
     this.vehicle.prevPosition.copy(this.vehicle.position);
@@ -462,13 +463,16 @@ export class Game {
       if (this.state.is('drive', 'paused', 'loading')) {
         this.cam.update(dt, pos, view.group.quaternion, v.velocity, t.speed);
       } else {
-        // attract mode: slow orbit around the parked car
-        this.titleOrbit += dt * 0.12;
-        const r = 7.2;
-        const camPos = TMP.set(pos.x + Math.sin(this.titleOrbit) * r, pos.y + 1.4, pos.z + Math.cos(this.titleOrbit) * r);
+        // attract mode: low front three-quarter view that slowly sways around the parked car
+        this.titleOrbit += dt;
+        const a = v.yaw + 0.62 + Math.sin(this.titleOrbit * 0.11) * 0.38;
+        const r = 6.4;
+        const camPos = TMP.set(pos.x + Math.sin(a) * r, pos.y + 0.55 + Math.sin(this.titleOrbit * 0.07) * 0.2, pos.z + Math.cos(a) * r);
         this.cam.camera.position.copy(camPos);
-        this.cam.camera.lookAt(pos.x, pos.y + 0.2, pos.z);
-        this.cam.camera.fov = 42;
+        // aim slightly right of the car so it sits beside the menu
+        const side = TMP2.set(Math.cos(a), 0, -Math.sin(a)).multiplyScalar(-1.6);
+        this.cam.camera.lookAt(pos.x + side.x, pos.y + 0.15, pos.z + side.z);
+        this.cam.camera.fov = 40;
         this.cam.camera.updateProjectionMatrix();
       }
       this.env.follow(pos);

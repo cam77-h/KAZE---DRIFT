@@ -103,8 +103,10 @@ export class PostStack {
     u.vignette.value = 0.28 + night * 0.12;
     u.saturation.value = 1.06 - night * 0.08;
     u.desaturate.value = desaturate;
-    this.bloom.strength = 0.26 + night * 0.55;
-    this.bloom.threshold = night > 0.5 ? 0.6 : 0.9;
+    // the sky is HDR, so the daytime threshold sits well above 1 to bloom only real highlights
+    this.bloom.strength = 0.18 + night * 0.5;
+    this.bloom.threshold = night > 0.5 ? 0.7 : 3.5;
+    this.bloom.radius = 0.35 + night * 0.25;
   }
 
   draw(): void {

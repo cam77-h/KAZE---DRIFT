@@ -73,10 +73,10 @@ export function asphaltTextures(): { map: THREE.Texture; bump: THREE.Texture; ro
     }
     // tar-sealed cracks
     g.lineCap = 'round';
-    for (let i = 0; i < 26; i++) {
+    for (let i = 0; i < 14; i++) {
       let x = rnd() * N, y = rnd() * N;
-      g.strokeStyle = `rgba(14,14,16,${0.55 + rnd() * 0.3})`;
-      g.lineWidth = 2 + rnd() * 5;
+      g.strokeStyle = `rgba(22,22,24,${0.25 + rnd() * 0.2})`;
+      g.lineWidth = 1.5 + rnd() * 3;
       g.beginPath();
       g.moveTo(x, y);
       const ang = rnd() * Math.PI * 2;
@@ -90,8 +90,8 @@ export function asphaltTextures(): { map: THREE.Texture; bump: THREE.Texture; ro
     // hairline cracks
     for (let i = 0; i < 70; i++) {
       let x = rnd() * N, y = rnd() * N;
-      g.strokeStyle = 'rgba(18,18,20,0.5)';
-      g.lineWidth = 0.8;
+      g.strokeStyle = 'rgba(18,18,20,0.3)';
+      g.lineWidth = 0.7;
       g.beginPath();
       g.moveTo(x, y);
       for (let k = 0; k < 8; k++) {
@@ -104,9 +104,9 @@ export function asphaltTextures(): { map: THREE.Texture; bump: THREE.Texture; ro
     // patches
     for (let i = 0; i < 4; i++) {
       const w = 80 + rnd() * 160, h = 60 + rnd() * 120, x = rnd() * N, y = rnd() * N;
-      g.fillStyle = 'rgba(34,34,37,0.55)';
+      g.fillStyle = 'rgba(40,40,43,0.22)';
       g.fillRect(x, y, w, h);
-      g.strokeStyle = 'rgba(15,15,15,0.6)';
+      g.strokeStyle = 'rgba(20,20,20,0.25)';
       g.lineWidth = 2;
       g.strokeRect(x, y, w, h);
     }
@@ -386,20 +386,21 @@ export function checkerTexture(): THREE.Texture {
 }
 
 /** Vertical Japanese-style sign with kanji + an English subtitle. */
-export function signTexture(jp: string, en: string, bg = '#0d1a2b', fg = '#f2efe6', accent = '#e8202f'): THREE.Texture {
-  return cached('sign-' + jp + en, () => {
-    const [c, g] = canvas(512, 256);
+export function signTexture(jp: string, en: string, bg = '#0d1a2b', fg = '#f2efe6', accent = '#e8202f', aspect = 2): THREE.Texture {
+  return cached('sign-' + jp + en + aspect, () => {
+    const H = 256, W = Math.round(H * aspect);
+    const [c, g] = canvas(W, H);
     g.fillStyle = bg;
-    g.fillRect(0, 0, 512, 256);
+    g.fillRect(0, 0, W, H);
     g.fillStyle = accent;
-    g.fillRect(0, 0, 512, 14);
-    g.fillRect(0, 242, 512, 14);
+    g.fillRect(0, 0, W, 14);
+    g.fillRect(0, H - 14, W, 14);
     g.fillStyle = fg;
     g.textAlign = 'center';
     g.font = '700 96px "Zen Kaku Gothic New", sans-serif';
-    g.fillText(jp, 256, 130);
+    g.fillText(jp, W / 2, 130);
     g.font = '700 40px "Chakra Petch", sans-serif';
-    g.fillText(en, 256, 205);
-    return finish(c, 'sign-' + jp + en, true, false);
+    g.fillText(en, W / 2, 205);
+    return finish(c, 'sign-' + jp + en + aspect, true, false);
   });
 }

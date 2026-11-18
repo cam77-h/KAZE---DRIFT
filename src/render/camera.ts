@@ -77,11 +77,14 @@ export class ChaseCamera {
         this.look.copy(carPos);
         this.initialized = true;
       }
-      // critically damped spring
+      // critically damped spring, solved in closed form so it is stable at any frame time
       const w = far ? 5.5 : 7;
-      const acc = desired.clone().sub(this.pos).multiplyScalar(w * w).addScaledVector(this.vel, -2 * w);
-      this.vel.addScaledVector(acc, dt);
-      this.pos.addScaledVector(this.vel, dt);
+      const x = w * dt;
+      const decay = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+      const change = this.pos.clone().sub(desired);
+      const temp = this.vel.clone().addScaledVector(change, w).multiplyScalar(dt);
+      this.vel.addScaledVector(temp, -w).multiplyScalar(decay);
+      this.pos.copy(desired).add(change.add(temp).multiplyScalar(decay));
       // don't let the camera fall below the car's ground
       if (this.pos.y < carPos.y + 0.5) this.pos.y = carPos.y + 0.5;
       const lookTarget = new THREE.Vector3().copy(carPos).addScaledVector(h, far ? 3 : 2.2);

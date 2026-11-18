@@ -58,11 +58,8 @@ function buildTerrain(track: Track, quality: number): THREE.Mesh {
     let h = hs.h;
     // sink the terrain under roads and pads, the road meshes sit on top
     if (hs.onRoad) h -= 0.35;
-    const p = hs.road ? hs.road.project : null;
-    void p;
     pos.setY(i, h);
-    const nz = track['terrainHeight'](x * 3.1, z * 3.1);
-    const v = 0.85 + (nz % 1) * 0.0 + Math.sin(x * 0.05) * Math.cos(z * 0.07) * 0.08;
+    const v = 0.85 + Math.sin(x * 0.05) * Math.cos(z * 0.07) * 0.08;
     if (hs.surface === 'gravel') c.setRGB(0.62, 0.58, 0.5);
     else c.setRGB(0.78 * v, 0.9 * v, 0.62 * v);
     colors.set([c.r, c.g, c.b], i * 3);
