@@ -73,6 +73,8 @@ export interface GameplaySettings {
   hudScale: number;
   showTelemetry: boolean;
   cameraShake: number;
+  /** hidden safety knob: multiplies every engine's torque (default 1.15, not shown in the UI) */
+  arcadePower: number;
 }
 
 export interface Settings {
@@ -85,7 +87,7 @@ export interface Settings {
 
 export const GRAPHICS_PRESETS: Record<Exclude<GraphicsPreset, 'custom'>, Omit<GraphicsSettings, 'preset'>> = {
   low: { shadows: false, shadowQuality: 1, ssao: false, bloom: false, motionBlur: false, antialias: false, renderScale: 0.75, particles: 0.4, drawDistance: 0.6, grain: false },
-  medium: { shadows: true, shadowQuality: 1, ssao: true, bloom: true, motionBlur: false, antialias: true, renderScale: 1, particles: 0.7, drawDistance: 0.8, grain: true },
+  medium: { shadows: true, shadowQuality: 1, ssao: true, bloom: true, motionBlur: true, antialias: true, renderScale: 1, particles: 0.7, drawDistance: 0.8, grain: true },
   high: { shadows: true, shadowQuality: 2, ssao: true, bloom: true, motionBlur: true, antialias: true, renderScale: 1, particles: 1, drawDistance: 1, grain: true },
   ultra: { shadows: true, shadowQuality: 3, ssao: true, bloom: true, motionBlur: true, antialias: true, renderScale: 1.25, particles: 1.3, drawDistance: 1.25, grain: true },
 };
@@ -149,7 +151,7 @@ export function defaultSettings(): Settings {
       touchLayout: 'buttons',
     },
     assists: defaultAssists(),
-    gameplay: { units: 'kmh', camera: 0, hudScale: 1, showTelemetry: false, cameraShake: 1 },
+    gameplay: { units: 'kmh', camera: 0, hudScale: 1, showTelemetry: false, cameraShake: 1, arcadePower: 1.15 },
   };
 }
 

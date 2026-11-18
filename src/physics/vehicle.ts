@@ -1,10 +1,10 @@
 import { Quaternion, Vector3 } from 'three';
 import tiresJson from '../data/tires.json';
-import { Engine, RADS_TO_RPM } from './drivetrain';
+import { Engine, RADS_TO_RPM, RPM_TO_RADS } from './drivetrain';
 import { makeSample, type GroundSample, type PhysicsWorld, type WallHit } from './collision';
 import { SURFACES, surfaceGrip } from './surfaces';
 import { makeCurve, tireForces, type TireCurve, type TireResult } from './tire';
-import type { AssistSettings, CarPhysicsSpec, DiffSpec, DriverInput, SurfaceId, TireCompound } from './types';
+import type { AssistSettings, CarPhysicsSpec, DiffSpec, DriverInput, EngineSpec, SurfaceId, TireCompound } from './types';
 import { defaultAssists } from './types';
 
 const TIRES = tiresJson as Record<string, TireCompound>;
@@ -84,6 +84,12 @@ export interface VehicleTelemetry {
   airborne: boolean;
 }
 
+/** Engine speed the launch clutch holds at full throttle: on boost for turbo engines, near peak torque otherwise. */
+export function launchTargetRpm(e: EngineSpec): number {
+  if (e.turbo) return Math.min(e.redlineRpm * 0.75, Math.max(e.turbo.fullBoostRpm * 0.95, e.redlineRpm * 0.55));
+  return e.redlineRpm * 0.6;
+}
+
 /** Four-wheel rigid-body vehicle with raycast suspension. Fixed-step; call step() at 120 Hz. */
 export class Vehicle {
   spec: CarPhysicsSpec;
@@ -104,6 +110,20 @@ export class Vehicle {
 
   steerAngle = 0;
   private tcsFactor = 1;
+  private launching = false;
+  private launchFactor = 1;
+  private launchClutchPhase = false;
+  /** launch control is metering the clutch right now (HUD light) */
+  get launchActive(): boolean {
+    return this.launchClutchPhase;
+  }
+  private launchTraction = 0;
+  /** staged launch: stopped, brake and throttle held, clutch out, revs held at launch rpm */
+  launchStaged = false;
+  /** set when a launch gets going (1 after a staged launch, 0.6 otherwise); consumed by the camera */
+  launchEvent = 0;
+  private launchKicked = false;
+  private launchWasStaged = false;
   impacts: ImpactEvent[] = [];
   telemetry: VehicleTelemetry = {
     speed: 0, forwardSpeed: 0, lateralSpeed: 0, driftAngle: 0, yawRate: 0, rpm: 0, gear: 1,
@@ -276,8 +296,9 @@ export class Vehicle {
     drivenOmega = shareSum > 0 ? drivenOmega / shareSum : 0;
     const wheelRpm = Math.abs(drivenOmega * eng.ratio()) * RADS_TO_RPM;
 
+    const roadRpm = (Math.abs(vF) / s.wheelRadius) * Math.abs(eng.ratio()) * RADS_TO_RPM;
     if (a.transmission === 'auto') {
-      eng.autoShift(dt, { throttle: rawInput.throttle, brake: rawInput.brake, handbrake: rawInput.handbrake, speed, forwardSpeed: vF, sliding, wheelRpm });
+      eng.autoShift(dt, { throttle: rawInput.throttle, brake: rawInput.brake, handbrake: rawInput.handbrake, speed, forwardSpeed: vF, sliding, wheelRpm, roadRpm });
     } else {
       if (rawInput.shiftUp) eng.shift(eng.gear === -1 ? 1 : eng.gear + 1);
       if (rawInput.shiftDown) {
@@ -287,13 +308,38 @@ export class Vehicle {
     }
 
     // traction control
-    if (a.tcs) {
+    // TCS steps aside while drifting or with drift assist on, so it never chokes a slide
+    if (a.tcs && a.driftAssist === 0 && !sliding) {
       let maxSlip = 0;
       for (const w of this.wheels) if (w.driven && w.onGround) maxSlip = Math.max(maxSlip, w.result.slipRatio);
       if (maxSlip > 0.16 && speed > 1.5) this.tcsFactor = Math.max(0.1, this.tcsFactor - dt * 6);
       else this.tcsFactor = Math.min(1, this.tcsFactor + dt * 3);
       throttle *= this.tcsFactor;
     }
+    // launch control: from a standstill at full throttle the clutch, not the throttle, meters the
+    // drive: the engine sits on its launch rpm (on boost) and the clutch passes only what the driven
+    // tires can take. Once the clutch is in, a wheelspin limiter carries on through the first two
+    // gears. Steering, the handbrake, lifting or a slide hand control back to the driver.
+    if (speed < 0.5 && throttle > 0.9 && eng.gear === 1) {
+      if (!this.launching) { this.launchKicked = false; this.launchWasStaged = false; }
+      this.launching = true;
+      this.launchFactor = 0.85;
+      this.launchTraction = 0;
+    }
+    if (this.launching && (speed > 30 || eng.gear > 2 || eng.gear < 1 || Math.abs(rawInput.steer) > 0.25 || rawInput.handbrake > 0.1 || sliding || throttle < 0.5)) this.launching = false;
+    this.launchClutchPhase = this.launching && eng.gear === 1 && !(roadRpm > launchTargetRpm(s.engine) * 0.7 && wheelRpm > eng.rpm - 120);
+    if (this.launching) {
+      let maxSlip = 0;
+      for (const w of this.wheels) if (w.driven && w.onGround) maxSlip = Math.max(maxSlip, w.result.slipRatio);
+      if (this.launchClutchPhase) {
+        if (maxSlip > 0.13) this.launchFactor = Math.max(0.55, this.launchFactor - dt * 4);
+        else if (maxSlip < 0.08) this.launchFactor = Math.min(0.95, this.launchFactor + dt * 0.3);
+      } else {
+        if (maxSlip > 0.15) this.tcsFactor = Math.max(0.45, this.tcsFactor - dt * 4);
+        else this.tcsFactor = Math.min(1, this.tcsFactor + dt * 3);
+        throttle *= this.tcsFactor;
+      }
+    } else this.launchFactor = 1;
     // stability control: cut throttle when the slide gets big
     if (a.stability && Math.abs(driftAngle) > 0.15 && speed > 6) throttle *= 0.3;
 
@@ -323,21 +369,48 @@ export class Vehicle {
     // ---- clutch / drive torque ----
     const G = eng.ratio();
     const idle = s.engine.idleRpm;
-    const launchRpm = idle + 700 + throttle * 2600;
+    const target = launchTargetRpm(s.engine);
+    // staged launch (auto box): stopped with brake and throttle both held → clutch out, revs held at
+    // the launch rpm so turbo cars build boost. Releasing the brake drops the clutch.
+    this.launchStaged = a.transmission === 'auto' && eng.gear >= 1 && speed < 0.6 && rawInput.brake > 0.5 && rawInput.throttle > 0.5;
+    eng.antiLag = this.launchStaged;
+    if (this.launchStaged) {
+      throttle = clamp01(1 - (eng.rpm - target) / 400);
+      this.launchWasStaged = true;
+    }
+    if (this.launching && !this.launchKicked && !this.launchStaged && speed > 0.3) {
+      this.launchKicked = true;
+      this.launchEvent = this.launchWasStaged ? 1 : 0.6;
+    }
+    const launchRpm = idle + 700 + throttle * Math.max(0, target - idle - 700);
     // automatic launch clutch: slips to hold the engine near launchRpm until the wheels catch up
     const rpmTerm = clamp01((eng.rpm - idle) / (launchRpm - idle));
-    const autoClutch = Math.max(smooth01((wheelRpm - idle * 1.1) / 1500), rpmTerm * rpmTerm * rpmTerm);
+    const wheelStart = idle * 1.1 + Math.max(0, launchRpm - idle * 1.1 - 1500) * throttle;
+    const autoClutch = Math.max(smooth01((wheelRpm - wheelStart) / 1500), rpmTerm * rpmTerm * rpmTerm);
     let engagement = (1 - clamp01(rawInput.clutch)) * autoClutch;
-    if (eng.shifting || G === 0) engagement = 0;
-    const capacity = engagement * s.clutchTorque;
+    if (eng.shifting || G === 0 || this.launchStaged) engagement = 0;
+    let capacity = engagement * s.clutchTorque;
+    const launchClutch = this.launchClutchPhase && !this.launchStaged && G !== 0 && !eng.shifting;
+    // soft two-step limiter: full throttle up to the launch rpm, fading out over the next 400 rpm
+    if (launchClutch) throttle = clamp01(1 - (eng.rpm - target) / 400);
     const Te = eng.produceTorque(throttle, dt);
+    if (launchClutch) {
+      // traction-limited clutch: what the driven tires can push, fed back through the gearing,
+      // and never more than holds the engine on its launch rpm
+      let traction = 0;
+      for (const w of this.wheels) if (w.driven && w.onGround) traction += w.tire.mu * w.tire.longRatio * w.grip * surfaceGrip(w.surface, world.wetness) * w.load;
+      this.launchTraction = this.launchTraction > 0 ? this.launchTraction + (traction - this.launchTraction) * Math.min(1, dt / 0.25) : traction;
+      const limit = (this.launchTraction * s.wheelRadius * this.launchFactor) / (Math.abs(G) * s.gearbox.efficiency);
+      const hold = Math.max(0, Te + ((eng.omega - target * RPM_TO_RADS) * s.engine.inertia) / 0.05);
+      capacity = Math.min(s.clutchTorque, limit, hold);
+    }
     const Ie = s.engine.inertia;
     const eff = s.gearbox.efficiency;
 
     let mode: 'free' | 'locked' | 'slip' = 'free';
     let clutchTorque = 0;
     if (capacity > 1 && G !== 0) {
-      if (eng.clutchLocked && Math.abs(Te) <= capacity * 1.02) mode = 'locked';
+      if (eng.clutchLocked && Math.abs(Te) <= capacity * 1.02 && !launchClutch) mode = 'locked';
       else {
         mode = 'slip';
         const slipW = eng.omega - drivenOmega * G;
@@ -491,12 +564,17 @@ export class Vehicle {
       const before = eng.omega - drivenOmega * G;
       eng.omega += ((Te - clutchTorque) / Ie) * dt;
       const after = eng.omega - newDriven * G;
-      if ((Math.sign(before) !== Math.sign(after) || Math.abs(after) < 1.5) && Math.abs(Te) < capacity) {
+      if ((Math.sign(before) !== Math.sign(after) || Math.abs(after) < 1.5) && Math.abs(Te) < capacity && !launchClutch) {
         eng.clutchLocked = true;
         eng.omega = newDriven * G;
       }
     } else {
       eng.omega += (Te / Ie) * dt;
+    }
+    // the gearbox synchronises while a shift is in progress: revs fall (or blip up) to the new gear
+    if (eng.shifting && G !== 0 && mode === 'free') {
+      const sync = Math.abs(newDriven * G);
+      eng.omega += (sync - eng.omega) * Math.min(1, dt / Math.max(0.02, s.gearbox.shiftTime * 0.4));
     }
     eng.omega = Math.max(eng.omega, 300 * (Math.PI / 30));
 

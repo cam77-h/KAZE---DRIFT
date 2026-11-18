@@ -2,7 +2,7 @@
  "_note": "Every number that drives money, XP and progression. Tune here; nothing else hard-codes these.",
  "startingMoney": 15000,
  "openRoad": {
-  "yenPerPoint": 0.075,
+  "yenPerPoint": 0.03,
   "nearMissYen": 50,
   "zoneStarYen": [
    1000,
@@ -16,7 +16,7 @@
   ]
  },
  "driftTrack": {
-  "yenPerPoint": 0.055,
+  "yenPerPoint": 0.022,
   "medalYen": {
    "bronze": 2000,
    "silver": 4000,
@@ -32,7 +32,7 @@
   "participationYen": 500
  },
  "xp": {
-  "pointsPerXp": 12,
+  "pointsPerXp": 29,
   "medalXp": {
    "bronze": 150,
    "silver": 300,

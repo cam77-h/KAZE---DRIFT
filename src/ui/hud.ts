@@ -29,6 +29,7 @@ export class Hud {
   private shiftLights: HTMLElement[] = [];
   private shiftBox: HTMLElement;
   private boostBar: HTMLElement;
+  private launchEl: HTMLElement;
   private boostNum: HTMLElement;
   private angle: HTMLElement;
   private angleNum: HTMLElement;
@@ -100,6 +101,7 @@ export class Hud {
       this.shiftLights.push(l);
       this.shiftBox.appendChild(l);
     }
+    this.launchEl = el('div', 'launch', 'LAUNCH · ローンチ');
     const boost = el('div', 'boost');
     boost.append(el('div', 'lbl', 'BOOST'));
     const bar = el('div', 'bar');
@@ -132,7 +134,7 @@ export class Hud {
     pause.setAttribute('aria-label', 'Pause');
     pause.addEventListener('click', () => this.onPause?.());
 
-    this.root.append(loc, tach, this.shiftBox, boost, assists, map, this.angle, this.telemetry, pause);
+    this.root.append(loc, tach, this.shiftBox, this.launchEl, boost, assists, map, this.angle, this.telemetry, pause);
     parent.appendChild(this.root);
     this.toastEl = el('div', 'toast');
     document.body.appendChild(this.toastEl);
@@ -262,6 +264,8 @@ export class Hud {
     const lit = Math.max(0, Math.min(10, Math.floor(s * 10)));
     this.shiftLights.forEach((l, i) => (l.className = i < lit ? (i < 4 ? 'g' : i < 7 ? 'y' : 'r') : ''));
     this.shiftBox.classList.toggle('flash', t.rpm > this.redline && Math.floor(performance.now() / 80) % 2 === 0);
+    this.launchEl.classList.toggle('on', v.launchStaged || v.launchActive);
+    this.launchEl.classList.toggle('staged', v.launchStaged);
     const turbo = v.spec.engine.turbo;
     const bar = turbo ? t.boost * turbo.maxBoostBar : 0;
     this.boostBar.style.width = `${turbo ? t.boost * 100 : 0}%`;

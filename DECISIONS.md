@@ -76,3 +76,32 @@ Choices made where the spec left room, one line of reasoning each. Newest at the
 - **The skill tree has 11 perks with 15 ranks**: Style 5 ranks, Money 5, Mechanic 5. Each rank costs 1 SP, and perks unlock top-down within a branch.
 - **Every 5th level is a milestone:** a sticker set unlocks (stored in `save.unlocks.stickers`) with a full-screen celebration. The free part arrives with the Section 8 parts system.
 - **The Garage menu opens the skill tree for now**; the 3D garage (Section 8) will put it in a tab.
+
+## Update 4
+
+- **`KAZE_DRIFT_UPDATE_3.md` does not exist and `reference/` holds no upgrade-screen image**, so the screens are designed in the game's own style (dark navy panels, paper-white type, sodium-orange and red accents).
+
+### Section 1: acceleration and the feel of speed
+
+- **Targets come from tuning, not a fudge factor.** Each car keeps realistic drag (CdA 0.58–0.68). Its final drive is set so redline in top gear lands on the target top speed (short gearing). Its torque curve is then scaled by a coarse scan. `tests/tools/tune_accel.ts` does both. Scales: AE 1.10, Kumo 1.20, Sakura 18 1.10, Sento 1.15, Hoshi 1.40, R7 1.40, S15 1.25, Raiden 1.90. The Raiden's AWD 4.3 s needs the most.
+- **Times are measured with a staged launch** (`src/physics/performance.ts`): brake and throttle held for 1.5 s, then the brake comes off. The clock starts as it does. The same function feeds the dealer cards, so the numbers on screen are the ones the test checks.
+- **Launch control meters the clutch, not the throttle.** Cutting throttle at a standstill made the engine bog and lose boost. Now the engine sits on its launch rpm (on boost for turbo cars), and the clutch passes only the torque the driven tyres can take, with a slip feedback trim. After the clutch locks, a wheelspin limiter runs through 2nd gear. Steering more than 25%, the handbrake, lifting or a slide end it, so drift entries are untouched.
+- **Staged launch = two-step:** stopped with brake and throttle held, the clutch stays out, a soft limiter holds the launch rpm, and the turbo builds boost. A green LAUNCH light shows on the HUD.
+- **Auto-shift decides on road speed, not wheel speed.** Wheelspin had been triggering upshift/downshift hunting. Other fixes: a 1.2 s downshift lockout after an upshift, a 0.5 s gap between upshifts (a limiter bounce had cascaded 2→4→5), and the box syncs revs to the new gear during the 80 ms shift.
+- **TCS is off whenever drift assist is on or the car is sliding.** Drift assist is on by default, so TCS only acts for players who turn drift assist off.
+- **`arcadePower` (default 1.15) is a hidden setting** in `settings.gameplay`. It multiplies every engine's torque, and all targets and the acceleration test assume 1.15. To change it, edit the saved settings (localStorage `kaze-drift-save`) or the default in `src/core/settings.ts`. The test would then need re-tuning.
+- **NA cars no longer inherit the base turbo.** `cars.json` deep-merges each car over `_base`, which has a turbo, so the AE, Kumo and Hoshi were secretly boosted. `"turbo": null` now removes it (`deepMerge` treats null as delete). All three still hit their targets.
+- **Rolling resistance −20%** (street 0.0104) and **drivetrain efficiency 0.85** for every gearbox, as the update asks.
+- **Model-fitted wheel radius scales the final drive** (`fitPhysicsToModel`), so a car's overall gearing per km/h, and so its tuned times, stay the same when its 3D model has different-sized wheels.
+- **Economy rescaled for the faster cars:** faster drifts score more points per minute, so the pacing test's scripted driver earned about 2.3× more. Open Road ¥/point 0.075 → 0.03, Drift Track 0.055 → 0.022, XP 1 per 12 → 1 per 29 points. The pacing targets hold again.
+- **Speed feel:**
+  - FOV: base + 12° × (speed / 270 km/h)^1.25, plus a punch on a launch kick.
+  - Shake: two-frequency, from 150 km/h, full at 300 km/h, scaled by the camera-shake setting.
+  - Motion blur: now on from the Medium preset.
+  - Speed lines: a 2D canvas overlay, fading in from 120 km/h.
+  - Upshifts: an exhaust thump with two crackles, plus a camera nudge.
+  - Turbo: an audible spool whoosh (band-passed air that tracks boost and boost rise), a louder whistle and blow-off.
+  - Launch: the camera kick, and more rear squat under hard acceleration.
+  - Road noise: tyre roar on tarmac.
+- **The 20 s Playwright capture runs on game time** (`tests/smoke/update4_accel.cjs`). Software GL in CI renders far slower than real time, so wall-clock seconds would undercount.
+- **The fully upgraded 2.8–3.6 s check** is added to `tests/accel.test.ts` with the Section 3 parts system, which defines "fully upgraded".

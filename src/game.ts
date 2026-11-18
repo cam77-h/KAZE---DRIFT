@@ -17,6 +17,7 @@ import type { PaintFinish } from './vehicles/paint';
 import { Environment } from './render/environment';
 import { PostStack } from './render/post';
 import { ChaseCamera } from './render/camera';
+import { SpeedLines } from './render/speedLines';
 import { ConeField, SkidMarks, SmokeSystem } from './render/effects';
 import { setMaxAnisotropy } from './render/textures';
 import { CarAudio } from './audio/engineAudio';
@@ -50,6 +51,7 @@ export class Game {
   readonly scene = new THREE.Scene();
   readonly env: Environment;
   readonly post: PostStack;
+  private speedLines: SpeedLines;
   readonly cam: ChaseCamera;
   readonly input: InputManager;
   readonly audio: CarAudio;
@@ -108,6 +110,7 @@ export class Game {
     this.input = new InputManager(s.controls);
     this.audio = new CarAudio(s.audio);
     this.uiRoot = document.getElementById('ui') ?? document.body;
+    this.speedLines = new SpeedLines(this.uiRoot);
     this.hud = new Hud(this.uiRoot);
     this.hud.onPause = () => this.pause();
     this.touch = new TouchControls(this.uiRoot, this.input);
@@ -559,6 +562,7 @@ export class Game {
     }
     if (this.save.perks.quickShift) spec.gearbox.shiftTime *= 0.7;
     this.vehicle = new Vehicle(spec, this.save.settings.assists);
+    this.vehicle.engine.powerScale = this.save.settings.gameplay.arcadePower;
     this.view = new CarView(this.vehicle, visual, { stance: def.visual.stance ?? 0 });
     this.scene.add(this.view.group);
     this.carKey = key;
@@ -789,8 +793,13 @@ export class Game {
         surface: surf === 'gravel' || surf === 'dirt' ? 'gravel' : surf === 'grass' ? 'grass' : 'tarmac',
         limiter: v.engine.limiterCut,
         bov: v.engine.bovEvent,
+        upshift: v.engine.upshiftEvent,
       });
       v.engine.bovEvent = 0;
+      if (v.engine.upshiftEvent && this.state.is('drive')) this.cam.nudge(Math.min(1, v.engine.load + 0.2));
+      v.engine.upshiftEvent = 0;
+      if (v.launchEvent && this.state.is('drive')) this.cam.kick(v.launchEvent);
+      v.launchEvent = 0;
       if (slip > 0.4 && this.state.is('drive')) this.input.rumble(0.05, slip * 0.25, 60);
 
       if (this.state.is('drive')) {
@@ -809,6 +818,7 @@ export class Game {
       // animate the sea
       this.seaT += dt;
       for (const o of this.animated) (o.userData as { animate: (t: number) => void }).animate(this.seaT);
+      this.speedLines.update(dt, Math.max(0, t.forwardSpeed), this.state.is('drive'));
       this.desat = Math.max(0, this.desat - dt * 1.5);
       this.post.setLook(this.env.look.night, t.speed, this.desat);
     }

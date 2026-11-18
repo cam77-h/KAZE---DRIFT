@@ -51,6 +51,8 @@ function deepMerge<T>(base: T, over: Partial<T>): T {
   const out = structuredClone(base) as Record<string, unknown>;
   for (const [k, v] of Object.entries(over as Record<string, unknown>)) {
     const b = out[k];
+    // null in a car's overrides removes a base field (e.g. "turbo": null for NA engines)
+    if (v === null) { delete out[k]; continue; }
     if (v && typeof v === 'object' && !Array.isArray(v) && b && typeof b === 'object' && !Array.isArray(b)) out[k] = deepMerge(b, v as Partial<typeof b>);
     else out[k] = structuredClone(v);
   }
