@@ -1,0 +1,339 @@
+{
+ "_note": "Traffic and parked-car models. weight = how often traffic spawns it; zones = where it may appear.",
+ "k_sedan": {
+  "glb": {
+   "file": "kenney/sedan.glb",
+   "forward": "+z",
+   "length": 4.5,
+   "width": 1.8,
+   "height": 1.45,
+   "wheels": [
+    "wheel-front-left",
+    "wheel-front-right",
+    "wheel-back-left",
+    "wheel-back-right"
+   ]
+  },
+  "weight": 10,
+  "kind": "car"
+ },
+ "k_sedan_sports": {
+  "glb": {
+   "file": "kenney/sedan-sports.glb",
+   "forward": "+z",
+   "length": 4.5,
+   "width": 1.8,
+   "height": 1.35,
+   "wheels": [
+    "wheel-front-left",
+    "wheel-front-right",
+    "wheel-back-left",
+    "wheel-back-right"
+   ]
+  },
+  "weight": 6,
+  "kind": "car"
+ },
+ "k_hatch": {
+  "glb": {
+   "file": "kenney/hatchback-sports.glb",
+   "forward": "+z",
+   "length": 4.1,
+   "width": 1.75,
+   "height": 1.45,
+   "wheels": [
+    "wheel-front-left",
+    "wheel-front-right",
+    "wheel-back-left",
+    "wheel-back-right"
+   ]
+  },
+  "weight": 6,
+  "kind": "car"
+ },
+ "k_suv": {
+  "glb": {
+   "file": "kenney/suv.glb",
+   "forward": "+z",
+   "length": 4.7,
+   "width": 1.9,
+   "height": 1.75,
+   "wheels": [
+    "wheel-front-left",
+    "wheel-front-right",
+    "wheel-back-left",
+    "wheel-back-right"
+   ]
+  },
+  "weight": 4,
+  "kind": "car"
+ },
+ "k_suv_lux": {
+  "glb": {
+   "file": "kenney/suv-luxury.glb",
+   "forward": "+z",
+   "length": 4.8,
+   "width": 1.9,
+   "height": 1.75,
+   "wheels": [
+    "wheel-front-left",
+    "wheel-front-right",
+    "wheel-back-left",
+    "wheel-back-right"
+   ]
+  },
+  "weight": 2,
+  "kind": "car"
+ },
+ "k_van": {
+  "glb": {
+   "file": "kenney/van.glb",
+   "forward": "+z",
+   "length": 4.9,
+   "width": 1.9,
+   "height": 2.0,
+   "wheels": [
+    "wheel-front-left",
+    "wheel-front-right",
+    "wheel-back-left",
+    "wheel-back-right"
+   ]
+  },
+  "weight": 4,
+  "kind": "van"
+ },
+ "k_delivery": {
+  "glb": {
+   "file": "kenney/delivery.glb",
+   "forward": "+z",
+   "length": 5.6,
+   "width": 2.0,
+   "height": 2.4,
+   "wheels": [
+    "wheel-front-left",
+    "wheel-front-right",
+    "wheel-back-left",
+    "wheel-back-right"
+   ]
+  },
+  "weight": 3,
+  "kind": "truck"
+ },
+ "k_delivery_flat": {
+  "glb": {
+   "file": "kenney/delivery-flat.glb",
+   "forward": "+z",
+   "length": 5.6,
+   "width": 2.0,
+   "height": 2.2,
+   "wheels": [
+    "wheel-front-left",
+    "wheel-front-right",
+    "wheel-back-left",
+    "wheel-back-right"
+   ]
+  },
+  "weight": 2,
+  "kind": "truck"
+ },
+ "k_truck": {
+  "glb": {
+   "file": "kenney/truck.glb",
+   "forward": "+z",
+   "length": 6.2,
+   "width": 2.2,
+   "height": 2.6,
+   "wheels": [
+    "wheel-front-left",
+    "wheel-front-right",
+    "wheel-back-left",
+    "wheel-back-right"
+   ]
+  },
+  "weight": 2,
+  "kind": "truck"
+ },
+ "k_truck_flat": {
+  "glb": {
+   "file": "kenney/truck-flat.glb",
+   "forward": "+z",
+   "length": 6.2,
+   "width": 2.2,
+   "height": 2.4,
+   "wheels": [
+    "wheel-front-left",
+    "wheel-front-right",
+    "wheel-back-left",
+    "wheel-back-right"
+   ]
+  },
+  "weight": 2,
+  "kind": "truck"
+ },
+ "k_taxi": {
+  "glb": {
+   "file": "kenney/taxi.glb",
+   "forward": "+z",
+   "length": 4.6,
+   "width": 1.75,
+   "height": 1.5,
+   "wheels": [
+    "wheel-front-left",
+    "wheel-front-right",
+    "wheel-back-left",
+    "wheel-back-right"
+   ]
+  },
+  "weight": 3,
+  "kind": "car"
+ },
+ "k_police": {
+  "glb": {
+   "file": "kenney/police.glb",
+   "forward": "+z",
+   "length": 4.7,
+   "width": 1.8,
+   "height": 1.5,
+   "wheels": [
+    "wheel-front-left",
+    "wheel-front-right",
+    "wheel-back-left",
+    "wheel-back-right"
+   ]
+  },
+  "weight": 1,
+  "kind": "car"
+ },
+ "k_ambulance": {
+  "glb": {
+   "file": "kenney/ambulance.glb",
+   "forward": "+z",
+   "length": 5.4,
+   "width": 2.0,
+   "height": 2.4,
+   "wheels": [
+    "wheel-front-left",
+    "wheel-front-right",
+    "wheel-back-left",
+    "wheel-back-right"
+   ]
+  },
+  "weight": 0.5,
+  "kind": "truck"
+ },
+ "k_firetruck": {
+  "glb": {
+   "file": "kenney/firetruck.glb",
+   "forward": "+z",
+   "length": 6.5,
+   "width": 2.3,
+   "height": 2.8,
+   "wheels": [
+    "wheel-front-left",
+    "wheel-front-right",
+    "wheel-back-left",
+    "wheel-back-right"
+   ]
+  },
+  "weight": 0.3,
+  "kind": "truck"
+ },
+ "k_garbage": {
+  "glb": {
+   "file": "kenney/garbage-truck.glb",
+   "forward": "+z",
+   "length": 6.5,
+   "width": 2.3,
+   "height": 2.8,
+   "wheels": [
+    "wheel-front-left",
+    "wheel-front-right",
+    "wheel-back-left",
+    "wheel-back-right"
+   ]
+  },
+  "weight": 0.5,
+  "kind": "truck"
+ },
+ "q_taxi": {
+  "glb": {
+   "file": "traffic/traffic_taxi_quaternius.glb",
+   "forward": "+z",
+   "length": 4.6,
+   "wheels": [
+    "Taxi_FrontLeftWheel",
+    "Taxi_FrontRightWheel",
+    "Taxi_BackWheels",
+    "Taxi_BackWheels"
+   ],
+   "paintMaterials": [
+    "Yellow"
+   ],
+   "headMaterials": [
+    "Headlights"
+   ],
+   "tailMaterials": [
+    "TailLights"
+   ]
+  },
+  "paint": "#1f4d36",
+  "weight": 3,
+  "kind": "car"
+ },
+ "kl_hatch": {
+  "glb": {
+   "file": "traffic/traffic_hatchback_kaylousberg.glb",
+   "forward": "+z",
+   "length": 4.0,
+   "wheels": [
+    "car_hatchback_wheel_front_left",
+    "car_hatchback_wheel_front_right",
+    "car_hatchback_wheel_rear_left",
+    "car_hatchback_wheel_rear_right"
+   ]
+  },
+  "weight": 4,
+  "kind": "car"
+ },
+ "jt_compact": {
+  "glb": {
+   "file": "traffic/traffic_red_car_jtoastie.glb",
+   "forward": "-z",
+   "length": 4.2,
+   "wheels": [
+    "FrontLeftWheel",
+    "FrontRightWheel",
+    "BackLeftWheel",
+    "BackRightWheel"
+   ],
+   "paintMaterials": [
+    "Material.001"
+   ]
+  },
+  "paint": "#c8102e",
+  "weight": 3,
+  "kind": "car"
+ },
+ "rp_hatch": {
+  "glb": {
+   "file": "traffic/traffic_sports_hatch_reppenthe303.glb",
+   "forward": "+z",
+   "length": 4.45,
+   "paintMaterials": [
+    "Mat_M3Body"
+   ]
+  },
+  "paint": "#7f8a96",
+  "weight": 0,
+  "kind": "parked"
+ },
+ "nl_80s": {
+  "glb": {
+   "file": "traffic/traffic_80s_car_nickladd.glb",
+   "forward": "+z",
+   "length": 4.3
+  },
+  "weight": 0,
+  "kind": "show"
+ }
+}

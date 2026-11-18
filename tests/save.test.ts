@@ -13,7 +13,7 @@ describe('save system', () => {
   it('creates a fresh save with the starter car', () => {
     const s = newSave();
     expect(s.version).toBe(SAVE_VERSION);
-    expect(s.garage.cars[0].carId).toBe('sakura_s15');
+    expect(s.garage.cars[0].carId).toBe('takumi_ae');
   });
 
   it('writes and reads back through storage', () => {

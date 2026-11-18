@@ -47,10 +47,10 @@ export interface SaveData {
 export function starterCar(): OwnedCar {
   return {
     uid: 'car-1',
-    carId: 'sakura_s15',
+    carId: 'takumi_ae',
     parts: {},
     tune: {},
-    paint: { body: '#c8102e', finish: 'metallic', wheels: '#c9ccd1', calipers: '#d21f2b' },
+    paint: { body: '#f2efe6', finish: 'gloss', wheels: '#c9ccd1', calipers: '#d21f2b' },
     livery: [],
     mileage: 0,
   };

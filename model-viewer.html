@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kaze Drift · Model viewer</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0d1a2b; color: #f2efe6; font-family: 'Chakra Petch', sans-serif; }
+    #bar { position: fixed; left: 12px; top: 10px; z-index: 2; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    #bar select, #bar button { font: inherit; background: #13253b; color: #f2efe6; border: 0; padding: 6px 10px; }
+    #labels div { position: fixed; transform: translate(-50%, 0); font-size: 12px; text-align: center; pointer-events: none; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+    #labels b { color: #f39c32; }
+  </style>
+</head>
+<body>
+  <div id="bar"><b>MODEL VIEWER</b><select id="pick"></select><button id="spin">Turntable: on</button><span id="info"></span></div>
+  <div id="labels"></div>
+  <script type="module" src="/src/dev/modelViewer.ts"></script>
+</body>
+</html>

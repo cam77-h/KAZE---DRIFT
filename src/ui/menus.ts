@@ -3,6 +3,7 @@ import { PAD_LABELS, keyLabel, type InputManager } from '../input/input';
 import { TRACKS, trackName } from '../data';
 import { Track } from '../world/track';
 import { exportSave, importSave, type SaveData } from '../core/save';
+import { CREDITS } from '../data/credits';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, html?: string): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
@@ -186,7 +187,7 @@ export class Menus {
   }
 
   private renderSettings(): void {
-    const tabs: [string, string][] = [['graphics', 'GRAPHICS'], ['controls', 'CONTROLS'], ['assists', 'ASSISTS'], ['audio', 'AUDIO'], ['gameplay', 'GAMEPLAY'], ['save', 'SAVE']];
+    const tabs: [string, string][] = [['graphics', 'GRAPHICS'], ['controls', 'CONTROLS'], ['assists', 'ASSISTS'], ['audio', 'AUDIO'], ['gameplay', 'GAMEPLAY'], ['save', 'SAVE'], ['credits', 'CREDITS']];
     this.tabBar.innerHTML = '';
     for (const [id, label] of tabs) {
       const b = el('button', 'tab' + (id === this.settingsTab ? ' on' : ''), label);
@@ -347,6 +348,17 @@ export class Menus {
       const [c1, cv] = slider(0, 1.5, 0.05, () => gp.cameraShake, (v) => (gp.cameraShake = v), (v) => `${Math.round(v * 100)}%`, 'gameplay');
       row('Camera shake', c1, undefined, cv);
       row('Telemetry overlay', toggle(() => gp.showTelemetry, (v) => (gp.showTelemetry = v), 'gameplay'), 'Per-wheel load, slip and surface. For tuners.');
+    } else if (this.settingsTab === 'credits') {
+      body.append(el('div', 'row', '<label>Kaze Drift</label><span></span><span></span><div class="desc">All car, brand and place names are fictional. Real badges on imported models are hidden and plates replaced. CC-BY models are credited below as their licenses require.</div>'));
+      for (const c of CREDITS) {
+        const link = el('a', '', c.url.replace(/^https?:\/\//, ''));
+        link.href = c.url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.style.color = 'var(--sakura)';
+        const r = row(`${c.title}`, el('span', 'desc', `${c.author} · ${c.license} · ${c.use}`), undefined, link);
+        r.querySelector('.desc')!.setAttribute('style', 'margin:0');
+      }
     } else if (this.settingsTab === 'save') {
       const box = el('textarea', 'codebox');
       box.placeholder = 'Your save code appears here. Paste a code to import it.';

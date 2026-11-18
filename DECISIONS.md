@@ -28,3 +28,17 @@ Choices made where the spec left room, one line of reasoning each. Newest at the
 - **Fonts are bundled via @fontsource (OFL) rather than loaded from Google Fonts.** The build then runs offline and from any static host.
 - **The time of day is fixed at a late-afternoon golden hour in Phase 1**, with `?hour=` for previews. The day/night cycle with streetlights is Phase 2/6 work.
 - **The deploy workflow uses relative asset paths (`base: './'`).** The same build works at `user.github.io/REPO/` and on any other host without configuration.
+
+## Update 2
+
+### Section 1: real models
+
+- **One `CarModelLoader` for every glTF.** It clones materials per instance (so paint never leaks between cars), normalises length, orientation and ground, re-pivots the wheels, swaps paint and hides branding. Templates are cached and cloned.
+- **Toy-proportioned Kenney traffic is scaled per axis** to real sedan/van/truck sizes, with the wheels re-scaled to stay round. A uniform scale to 4.5 m would have made a Kenney sedan 2.6 m wide.
+- **Measured geometry is the source of truth.** The loader measures wheelbase, track and wheel radius after normalising, `fitPhysicsToModel` applies them at runtime, and the same numbers are baked into `cars.json` so tests and dealer stats match.
+- **Paint on atlas-textured models (Takumi AE, Hoshi GT) recolours only texels near the body's key colour** in a shader. The AE86 key is white, so panda black stays black. The Hoshi GT key, (218, 167, 0), was found by sampling the atlas at the body mesh's UVs.
+- **The Sakura 18 is sold as the "Sakura 18 Targa".** The model is built as a T-top; a flat roof plate looked fake from the chase camera, and the spec allows the Targa option.
+- **Imported low-poly paint gets a slightly rougher clearcoat (≥ 0.16)** and paint albedo is capped at 62% luminance. Flat-shaded faces otherwise mirror the sun across the whole panel and bloom white.
+- **The daytime bloom threshold is raised to 6** (night stays at 0.7). Only real light sources and sun glints bloom by day.
+- **Starter car is now the Takumi AE** in a fresh save. The procedural S15 stays as a buyable car.
+- **The old dev car page became `/model-viewer.html`.** It ships with the build so models can be checked on the live site too.

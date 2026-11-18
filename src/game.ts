@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GameLoop, PHYSICS_DT } from './core/loop';
 import { StateMachine } from './core/state';
 import { EventBus, type GameEvents } from './core/events';
-import { loadSave, newSave, writeSave, type SaveData } from './core/save';
+import { loadSave, newSave, writeSave, type OwnedCar, type SaveData } from './core/save';
 import { defaultKeys, type Action } from './core/settings';
 import { InputManager } from './input/input';
 import { Vehicle } from './physics/vehicle';
@@ -12,6 +12,8 @@ import { Track } from './world/track';
 import { buildTrackMeshes } from './world/trackMesh';
 import { buildScenery } from './world/scenery';
 import { CarView } from './vehicles/carView';
+import { buildCarVisual, fitPhysicsToModel } from './vehicles/carVisual';
+import type { PaintFinish } from './vehicles/paint';
 import { Environment } from './render/environment';
 import { PostStack } from './render/post';
 import { ChaseCamera } from './render/camera';
@@ -261,7 +263,8 @@ export class Game {
     this.scene.add(group);
     this.location = { id, track, group, lamps: scenery.lamps, cones };
     this.save.world.lastLocation = id;
-    this.spawnCar();
+    progress(0.9);
+    await this.spawnCar();
     this.applyTimeOfDay();
     progress(1);
     // warm up shaders so the first frames don't hitch
@@ -275,7 +278,7 @@ export class Game {
     else {
       this.menus.showLoading(id);
       this.menus.setProgress(1);
-      this.spawnCar();
+      await this.spawnCar();
     }
     this.cam.mode = this.save.settings.gameplay.camera;
     this.cam.snap();
@@ -283,19 +286,36 @@ export class Game {
     setTimeout(() => this.state.go('drive'), 250);
   }
 
-  private spawnCar(): void {
-    const loc = this.location!;
-    const owned = this.save.garage.cars.find((c) => c.uid === this.save.garage.selected) ?? this.save.garage.cars[0];
-    const def = carDef(owned.carId);
-    if (!this.vehicle || this.vehicle.spec.id !== owned.carId) {
-      if (this.view) {
-        this.scene.remove(this.view.group);
-        this.view.dispose();
-      }
-      this.vehicle = new Vehicle(carPhysics(owned.carId), this.save.settings.assists);
-      this.view = new CarView(this.vehicle, def, owned.paint.body);
-      this.scene.add(this.view.group);
+  /** Build (or rebuild) the player's car: model first, so the physics can match its geometry. */
+  private async ensureCar(): Promise<void> {
+    const owned = this.currentCar();
+    const carId = new URLSearchParams(location.search).get('car') ?? owned.carId;
+    const key = `${carId}|${owned.uid}`;
+    if (this.vehicle && this.carKey === key) return;
+    const def = carDef(carId);
+    const visual = await buildCarVisual(def, owned.paint.body, (owned.paint.finish as PaintFinish) ?? 'metallic');
+    const spec = carPhysics(carId);
+    if (visual.kind === 'glb') fitPhysicsToModel(spec, visual.dims);
+    if (this.view) {
+      this.scene.remove(this.view.group);
+      this.view.dispose();
     }
+    this.vehicle = new Vehicle(spec, this.save.settings.assists);
+    this.view = new CarView(this.vehicle, visual);
+    this.scene.add(this.view.group);
+    this.carKey = key;
+  }
+  private carKey = '';
+
+  currentCar(): OwnedCar {
+    return this.save.garage.cars.find((c) => c.uid === this.save.garage.selected) ?? this.save.garage.cars[0];
+  }
+
+  private async spawnCar(): Promise<void> {
+    const loc = this.location!;
+    await this.ensureCar();
+    if (!this.vehicle) return;
+    const owned = this.currentCar();
     this.vehicle.assists = this.save.settings.assists;
     const showcase = loc.track.def.showcase as { x: number; z: number; yaw: number } | undefined;
     const sp = this.state.is('title') && showcase ? showcase : loc.track.def.spawn;
@@ -304,8 +324,9 @@ export class Game {
     this.vehicle.prevPosition.copy(this.vehicle.position);
     this.vehicle.prevQuaternion.copy(this.vehicle.quaternion);
     const n = trackName(loc.id);
-    this.hud.configure(this.vehicle, loc.track, { location: n.name.toUpperCase(), jp: n.jp, car: carName(owned.carId) }, this.save.settings);
+    this.hud.configure(this.vehicle, loc.track, { location: n.name.toUpperCase(), jp: n.jp, car: carName(this.vehicle.spec.id) }, this.save.settings);
     this.cam.snap();
+    void owned;
   }
 
   resetCar(): void {

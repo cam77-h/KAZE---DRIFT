@@ -6,6 +6,9 @@ export default defineConfig({
   base: './',
   build: {
     target: 'es2022',
+    rollupOptions: {
+      input: { main: 'index.html', models: 'model-viewer.html' },
+    },
     chunkSizeWarningLimit: 1500,
   },
   test: {
