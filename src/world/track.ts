@@ -303,6 +303,7 @@ export interface WallLine {
   closed: boolean;
   /** which side of the line faces the road (+1 = left of the polyline direction) */
   face: 1 | -1;
+  style?: string;
 }
 
 export class Track implements PhysicsWorld {
@@ -462,6 +463,20 @@ export class Track implements PhysicsWorld {
         this.wallLines.push({ points: pts, type: w.type, height: w.height ?? 1.0, closed: false, face: side > 0 ? -1 : 1 });
       }
     }
+    // tunnel walls are solid
+    const tun = this.def.tunnel as { from: number; to: number } | undefined;
+    if (tun && this.roads[0]) {
+      const S = this.roads[0].samples;
+      for (const side of [1, -1]) {
+        const pts: [number, number, number][] = [];
+        for (const p of S) {
+          if (p.s < tun.from || p.s > tun.to) continue;
+          const off = side * (p.halfWidth + 1.4);
+          pts.push([p.x + p.lx * off, p.y, p.z + p.lz * off]);
+        }
+        this.walls.addPolyline(pts.filter((_, i) => i % 2 === 0), 0.35, 7, 'concrete');
+      }
+    }
     for (const w of this.def.walls ?? []) {
       const r = w.radius ?? (w.type === 'tire' ? 0.45 : 0.35);
       if (w.circle) {
@@ -478,7 +493,7 @@ export class Track implements PhysicsWorld {
       } else if (w.points) {
         const pts = w.points.map((p) => [p[0], p.length > 2 ? p[1] : this.height(p[0], p[1]), p.length > 2 ? p[2] : p[1]] as [number, number, number]);
         this.walls.addPolyline(pts, r, w.height ?? 1.0, w.type, w.closed);
-        this.wallLines.push({ points: pts, type: w.type, height: w.height ?? 1.0, closed: !!w.closed, face: 1 });
+        this.wallLines.push({ points: pts, type: w.type, height: w.height ?? 1.0, closed: !!w.closed, face: 1, style: (w as { container?: boolean }).container ? 'container' : undefined });
       }
     }
   }

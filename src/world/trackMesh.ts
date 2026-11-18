@@ -56,6 +56,7 @@ function buildTerrain(track: Track, quality: number): THREE.Mesh {
   const geo = new THREE.PlaneGeometry(size, size, n, n);
   geo.rotateX(-Math.PI / 2);
   const pos = geo.getAttribute('position');
+  const tunnel = track.def.tunnel as { from: number; to: number } | undefined;
   const colors = new Float32Array(pos.count * 3);
   const c = new THREE.Color();
   for (let i = 0; i < pos.count; i++) {
@@ -64,6 +65,11 @@ function buildTerrain(track: Track, quality: number): THREE.Mesh {
     let h = hs.h;
     // sink the terrain under roads and pads, the road meshes sit on top
     if (hs.onRoad) h -= 0.35;
+    // and keep it out of the tunnel corridor (the coarse grid would bulge inside the walls)
+    if (tunnel) {
+      const loc = track.locate(x, z);
+      if (loc && loc.s > tunnel.from - 6 && loc.s < tunnel.to + 6 && Math.abs(loc.lateral) < loc.road.samples[0].halfWidth + 14) h = Math.min(h, hs.h - 1.2);
+    }
     pos.setY(i, h);
     const v = 0.85 + Math.sin(x * 0.05) * Math.cos(z * 0.07) * 0.08;
     if (hs.surface === 'gravel') c.setRGB(0.62, 0.58, 0.5);
@@ -259,7 +265,58 @@ function padMesh(track: Track, pad: Track['def']['pads'][number], mat: THREE.Mat
 
 // ------------------------------------------------------------------ walls
 
+const CONTAINER_COLORS = [0xb8432f, 0x2f6aa0, 0x3f7f4a, 0xd0a23a, 0x7a7f86, 0x8a2f5c];
+let containerTex: THREE.Texture | null = null;
+function corrugated(): THREE.Texture {
+  if (containerTex) return containerTex;
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 64;
+  const g = c.getContext('2d')!;
+  for (let x = 0; x < 256; x += 8) {
+    g.fillStyle = x % 16 ? '#e8e8e8' : '#b9b9b9';
+    g.fillRect(x, 0, 8, 64);
+  }
+  g.fillStyle = 'rgba(0,0,0,0.25)';
+  g.fillRect(0, 0, 256, 4);
+  g.fillRect(0, 60, 256, 4);
+  containerTex = new THREE.CanvasTexture(c);
+  containerTex.colorSpace = THREE.SRGBColorSpace;
+  return containerTex;
+}
+
+/** A row of stacked 12 m shipping containers along a wall line. */
+function containerRow(w: WallLine): THREE.InstancedMesh {
+  const geo = new THREE.BoxGeometry(2.44, 2.59, 12.2);
+  const mat = new THREE.MeshStandardMaterial({ map: corrugated(), roughness: 0.7, metalness: 0.3 });
+  const spots: THREE.Matrix4[] = [];
+  const cols: THREE.Color[] = [];
+  let n = 0;
+  const a = w.points[0], b = w.points[w.points.length - 1];
+  const len = Math.hypot(b[0] - a[0], b[2] - a[2]);
+  const yaw = Math.atan2(b[0] - a[0], b[2] - a[2]);
+  for (let d = 6; d < len; d += 12.4) {
+    const f = d / len;
+    const x = a[0] + (b[0] - a[0]) * f, z = a[2] + (b[2] - a[2]) * f;
+    const stack = 1 + ((n * 7) % 3 === 0 ? 1 : 0);
+    for (let k = 0; k < stack; k++) {
+      spots.push(new THREE.Matrix4().compose(new THREE.Vector3(x, a[1] + 1.3 + k * 2.6, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw + (k ? 0.04 : 0)), new THREE.Vector3(1, 1, 1)));
+      cols.push(new THREE.Color(CONTAINER_COLORS[(n * 5 + k * 3) % CONTAINER_COLORS.length]));
+    }
+    n++;
+  }
+  const inst = new THREE.InstancedMesh(geo, mat, spots.length);
+  spots.forEach((m, i) => {
+    inst.setMatrixAt(i, m);
+    inst.setColorAt(i, cols[i]);
+  });
+  inst.castShadow = true;
+  inst.receiveShadow = true;
+  return inst;
+}
+
 function buildWall(w: WallLine): THREE.Object3D | null {
+  if (w.style === 'container') return containerRow(w);
   switch (w.type) {
     case 'tire':
       return tireWall(w);
@@ -472,41 +529,44 @@ function seaMesh(size: number, level: number): THREE.Mesh {
   return mesh;
 }
 
-/** A concrete tunnel shell over a stretch of road, with portals and sodium lights. */
+/** A concrete tunnel over a stretch of road: two walls and a ceiling, sodium lights, portals. */
 function tunnelMesh(track: Track, road: Road, from: number, to: number): THREE.Group {
   const g = new THREE.Group();
   const S = road.samples;
-  const pos: number[] = [], idx: number[] = [], uv: number[] = [];
-  const prof: [number, number][] = [[-1.15, -0.2], [-1.15, 4.2], [-0.9, 6.2], [-0.45, 7.2], [0, 7.5], [0.45, 7.2], [0.9, 6.2], [1.15, 4.2], [1.15, -0.2]];
   const i0 = S.findIndex((p) => p.s >= from), i1 = S.findIndex((p) => p.s >= to);
-  let rows = 0;
   const lampGeo = new THREE.BoxGeometry(0.5, 0.12, 1.4);
   const lampMat = new THREE.MeshStandardMaterial({ color: 0xffb24a, emissive: 0xff9a2a, emissiveIntensity: 2.2 });
   const lamps: THREE.Matrix4[] = [];
-  for (let i = i0; i <= i1; i++) {
-    const p = S[i];
-    const hw = p.halfWidth + 1.2;
-    const y = track.height(p.x, p.z);
-    for (const [lx, h] of prof) {
-      const off = lx * hw;
-      pos.push(p.x + p.lx * off, y + h, p.z + p.lz * off);
-      uv.push(lx, p.s / 6);
+  const H = 6.8;
+  // three strips: right wall, ceiling, left wall (lateral -1 → +1), each a quad strip along s
+  const strips: [number, number, number, number][] = [[-1, -0.3, -1, H], [-1, H, 1, H], [1, H, 1, -0.3]];
+  const mat = new THREE.MeshStandardMaterial({ map: concreteTexture(), color: 0xb9b4aa, roughness: 0.9, side: THREE.DoubleSide });
+  for (const [la, ha, lb, hb] of strips) {
+    const pos: number[] = [], uv: number[] = [], idx: number[] = [];
+    let row = 0;
+    for (let i = i0; i <= i1; i++) {
+      const p = S[i];
+      const hw = p.halfWidth + 1.4;
+      const y = track.height(p.x, p.z);
+      pos.push(p.x + p.lx * la * hw, y + ha, p.z + p.lz * la * hw, p.x + p.lx * lb * hw, y + hb, p.z + p.lz * lb * hw);
+      uv.push(0, p.s / 6, 1, p.s / 6);
+      if (row > 0) {
+        const a = (row - 1) * 2;
+        idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+      }
+      row++;
+      if (i % 12 === 0 && la === -1 && lb === 1) lamps.push(new THREE.Matrix4().compose(new THREE.Vector3(p.x + p.lx * hw * 0.5, y + H - 0.2, p.z + p.lz * hw * 0.5), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(p.tx, p.tz)), new THREE.Vector3(1, 1, 1)));
     }
-    if (rows > 0) {
-      const a = (rows - 1) * prof.length, b = rows * prof.length;
-      for (let k = 0; k < prof.length - 1; k++) idx.push(a + k, b + k, a + k + 1, a + k + 1, b + k, b + k + 1);
-    }
-    if (i % 12 === 0) lamps.push(new THREE.Matrix4().compose(new THREE.Vector3(p.x + p.lx * hw * 0.55, y + 6.6, p.z + p.lz * hw * 0.55), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(p.tx, p.tz)), new THREE.Vector3(1, 1, 1)));
-    rows++;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, mat);
+    m.castShadow = true;
+    m.receiveShadow = true;
+    g.add(m);
   }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  geo.setIndex(idx);
-  geo.computeVertexNormals();
-  const shell = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: concreteTexture(), color: 0xb9b4aa, roughness: 0.9, side: THREE.DoubleSide }));
-  shell.castShadow = true;
-  g.add(shell);
   const inst = new THREE.InstancedMesh(lampGeo, lampMat, lamps.length);
   lamps.forEach((m, i) => inst.setMatrixAt(i, m));
   g.add(inst);
@@ -516,7 +576,7 @@ function tunnelMesh(track: Track, road: Road, from: number, to: number): THREE.G
     const y = track.height(p.x, p.z);
     const face = new THREE.Mesh(new THREE.BoxGeometry((p.halfWidth + 1.2) * 2 + 6, 9, 1.2), new THREE.MeshStandardMaterial({ map: concreteTexture(), color: 0xcfcac0, roughness: 0.9 }));
     const hole = new THREE.Group();
-    face.position.set(0, 7.5 + 2.5, 0);
+    face.position.set(0, H + 4.5, 0);
     hole.add(face);
     hole.position.set(p.x, y, p.z);
     hole.rotation.y = Math.atan2(p.tx, p.tz);

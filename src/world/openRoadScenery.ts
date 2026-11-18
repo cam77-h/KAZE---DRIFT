@@ -212,6 +212,36 @@ function expressway(track: Track, road: Road, sec: Section, lamps: THREE.MeshSta
 
 function touge(track: Track, road: Road, sec: Section, lamps: THREE.MeshStandardMaterial[]): THREE.Group {
   const g = new THREE.Group();
+  // dense cedar forest on both slopes of the pass
+  const cone = new THREE.ConeGeometry(1, 1, 7);
+  cone.translate(0, 0.5, 0);
+  const trunk = new THREE.CylinderGeometry(0.15, 0.22, 1, 5);
+  trunk.translate(0, 0.5, 0);
+  const mats: THREE.Matrix4[] = [], tm: THREE.Matrix4[] = [], cols: THREE.Color[] = [];
+  for (let s = sec.from; s < sec.to; s += 5) {
+    const p = sampleAt(road, s);
+    for (const side of [1, -1]) {
+      if (rnd() < 0.25) continue;
+      const off = side * (p.halfWidth + 9 + rnd() * 70);
+      const x = p.x + p.lx * off + (rnd() - 0.5) * 6, z = p.z + p.lz * off + (rnd() - 0.5) * 6;
+      const loc = track.locate(x, z);
+      if (loc && Math.abs(loc.lateral) < loc.road.samples[0].halfWidth + 8) continue;
+      const y = track.height(x, z);
+      const h = 10 + rnd() * 9, r = 1.6 + rnd() * 1.1;
+      mats.push(new THREE.Matrix4().compose(new THREE.Vector3(x, y + h * 0.15, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * 6), new THREE.Vector3(r, h * 0.85, r)));
+      tm.push(new THREE.Matrix4().compose(new THREE.Vector3(x, y - 0.2, z), new THREE.Quaternion(), new THREE.Vector3(1, h * 0.3, 1)));
+      cols.push(new THREE.Color().setHSL(0.31 + rnd() * 0.04, 0.38, 0.15 + rnd() * 0.07));
+    }
+  }
+  const fol = new THREE.InstancedMesh(cone, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, flatShading: true }), mats.length);
+  const tr = new THREE.InstancedMesh(trunk, new THREE.MeshStandardMaterial({ color: 0x4a3626, roughness: 1 }), tm.length);
+  mats.forEach((m, i) => {
+    fol.setMatrixAt(i, m);
+    fol.setColorAt(i, cols[i]);
+    tr.setMatrixAt(i, tm[i]);
+  });
+  fol.castShadow = true;
+  g.add(fol, tr);
   // summit: torii gate + stone lanterns + lookout vending machines
   let top = sec.from, best = -Infinity;
   for (let s = sec.from; s < sec.to; s += 10) {

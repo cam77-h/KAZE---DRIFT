@@ -219,7 +219,36 @@
      0.93,
      0.93
     ],
-    "paintTolerance": 0.42
+    "paintTolerance": 0.42,
+    "strip": [
+     {
+      "node": "Car",
+      "end": "front",
+      "yMin": 0.455,
+      "yMax": 0.51,
+      "halfX": 0.3,
+      "depth": 0.14,
+      "maxArea": 0.0005
+     },
+     {
+      "node": "Car",
+      "end": "front",
+      "yMin": 0.335,
+      "yMax": 0.395,
+      "halfX": 0.32,
+      "depth": 0.14,
+      "maxArea": 0.0005
+     },
+     {
+      "node": "Car",
+      "end": "rear",
+      "yMin": 0.632,
+      "yMax": 0.675,
+      "halfX": 0.33,
+      "depth": 0.2,
+      "maxArea": 0.0005
+     }
+    ]
    },
    "stance": 0.03
   },

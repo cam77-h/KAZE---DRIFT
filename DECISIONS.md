@@ -49,3 +49,19 @@ Choices made where the spec left room, one line of reasoning each. Newest at the
 - **SSAO is on at Medium**, as the update asks. Low stays without it for weak laptops and phones.
 - **Stance is applied in `CarView` by dropping only the body** (per-car `visual.stance`, 0–4.5 cm). Wheels stay on the physics contact patch, so tires never sink. Visual camber is a per-axle field the tuning menu will drive.
 - **The textured-paint mask uses a hard edge (85–100% of tolerance).** A soft fade blended the paint toward pink on the AE's gradient palette cells. The AE key is a 0.93 grey with a wide tolerance, so the whole white upper body (palette cells 227–255) changes colour and the black lower half stays black.
+
+### Sections 3–5: flow, Open Road, Drift Track
+
+- **The title screen is "press any key" in front of the main menu.** The menu is Play / Garage / Dealer / Records / Settings / How to Drift, with a level / ¥ / SP chip on every menu screen.
+- **Mode-card art is rendered from the game itself** (`tests/tools/modeart.cjs`, UI hidden) and shipped as small JPEGs in `public/assets/ui/`.
+- **The Open Road is one 8.9 km closed loop with four sections in sequence:** town → expressway → touge → coast with a tunnel → town. It's built by `tests/tools/gen_openroad.py`. One loop keeps lane logic, traffic and activity triggers simple, and the sections still flow into each other as the update asks.
+- **Traffic keeps left (Japan) and is kinematic.** It follows the lane at its section speed, follows the car ahead and brakes and honks for the player, but isn't simulated with full physics. The player collides with it as a moving box (`Vehicle.collideBox`). A pool of ~34 models is loaded during the loading screen and recycled within a window around the player, so nothing loads while driving.
+- **Near misses use a pass-by test:** the player crosses a traffic car's mid-line within 1.6 m side gap at a relative speed above 6 m/s, without touching.
+- **Open Road money is paid at the end of the run (results screen)** but counted live in the HUD. The update's "End Run" goes through the pause menu; "Quit to menu" leaves without rewards.
+- **Drift zone score is everything the chain gained between the zone gates** (banked + live). Zones, traps and the danger sign pay each star once, ever.
+- **Clipping points are placed automatically from track curvature:** an inner point at each apex, an outer zone on the exit. Every track gets them without hand-authoring.
+- **Drift Attack judging scales the drift rate by line × proximity.** Line is the distance from an outside-in-outside ideal line; proximity rises near clipping points. The results breakdown shows average angle, speed, line %, clips hit and best combo.
+- **Tandem Chase uses a kinematic lead car** that follows a scripted line (speed from curvature, about 30° of angle in corners). The run is judged on proximity (60%) and angle match (40%) → Win / OMT / Lose. Only the chase run is built; the "swap and lead" second run is listed in NEXT_STEPS.
+- **Minami Reverse is generated** from the Minami data (points reversed, wall sides flipped), so the two layouts can't drift apart.
+- **Port Gymkhana containers are real walls** (capsule colliders) drawn as stacked 12 m shipping containers, with cones at every corner apex.
+- **The Takumi AE's modelled badges** (maker name front and rear, model name on the grille) are removed by deleting the small lettering triangles in three boxes at the car's ends (`strip` in `cars.json`). The other six imported cars were checked front and rear and carry none; the RX-7's `Logos` node stays hidden.

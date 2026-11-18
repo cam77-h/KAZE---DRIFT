@@ -26,6 +26,11 @@ export interface ModelDef {
   paintTolerance?: number;
   /** node or material name fragments to hide (real badges, toy parts) */
   hide?: string[];
+  /**
+   * Remove modelled lettering (real badges baked into the mesh): small triangles inside a region
+   * at the front or rear end of a node. y is measured from the node's lowest point, metres.
+   */
+  strip?: { node: string; end: 'front' | 'rear'; yMin: number; yMax: number; halfX: number; depth: number; maxArea: number }[];
   /** material names that are number plates (replaced by our fictional plate) */
   plates?: string[];
   headMaterials?: string[];
@@ -153,6 +158,8 @@ export async function loadCarModel(def: ModelDef): Promise<LoadedCarModel> {
     norm.scale.set(def.width ? def.width / sz.x : s, def.height ? def.height / sz.y : s, s);
   }
   root.updateMatrixWorld(true);
+
+  if (def.strip) for (const r of def.strip) stripRegion(scene, r);
 
   // wheels
   const wheelNodes = findWheels(scene, def);
@@ -363,4 +370,32 @@ function findByPrefix(scene: THREE.Object3D, name: string): THREE.Object3D | nul
     if (!hit && o.name && (o.name.startsWith(name) || o.name.includes(name))) hit = o;
   });
   return hit;
+}
+
+/** Delete small triangles (lettering) inside a box at one end of a mesh. Works in world space. */
+function stripRegion(scene: THREE.Object3D, r: NonNullable<ModelDef['strip']>[number]): void {
+  const node = scene.getObjectByName(r.node) as THREE.Mesh | undefined;
+  if (!node || !node.isMesh || !node.geometry.index) return;
+  scene.updateMatrixWorld(true);
+  const geo = node.geometry.clone();
+  node.geometry = geo;
+  const pos = geo.getAttribute('position');
+  const idx = geo.index!;
+  const m = node.matrixWorld;
+  const box = new THREE.Box3().setFromBufferAttribute(pos as THREE.BufferAttribute).applyMatrix4(m);
+  const cx = (box.min.x + box.max.x) / 2;
+  const endZ = r.end === 'front' ? box.max.z : box.min.z;
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), cen = new THREE.Vector3(), ab = new THREE.Vector3(), ac = new THREE.Vector3();
+  const keep: number[] = [];
+  for (let i = 0; i < idx.count; i += 3) {
+    a.fromBufferAttribute(pos, idx.getX(i)).applyMatrix4(m);
+    b.fromBufferAttribute(pos, idx.getX(i + 1)).applyMatrix4(m);
+    c.fromBufferAttribute(pos, idx.getX(i + 2)).applyMatrix4(m);
+    cen.copy(a).add(b).add(c).divideScalar(3);
+    const area = ab.subVectors(b, a).cross(ac.subVectors(c, a)).length() / 2;
+    const y = cen.y - box.min.y;
+    const inside = Math.abs(cen.x - cx) < r.halfX && Math.abs(cen.z - endZ) < r.depth && y > r.yMin && y < r.yMax && area < r.maxArea;
+    if (!inside) keep.push(idx.getX(i), idx.getX(i + 1), idx.getX(i + 2));
+  }
+  geo.setIndex(keep);
 }
