@@ -220,3 +220,9 @@ Choices made where the spec left room, one line of reasoning each. Newest at the
   - A bot using only throttle and a stick limited to ±0.25 holds 30–45° for over 10 s with the 70% assist.
   - With the assist off, the same inputs spin the car.
   - The bot is a PD controller on drift angle; the rate term stands in for a player reacting to the car's rotation.
+
+### Step 4: drift techniques (§6), in progress
+
+- **Techniques are scripted inputs only** (`tests/sim/techniques.ts`). After the entry, the same throttle + small-stick hold bot takes over. "Within 2 s" counts from each technique's trigger: the throttle stab, the handbrake pull, the clutch drop, or the lift. Lift-off, for example, starts with a second of normal cornering.
+- **The handbrake entry dips the clutch, as real drivers do.** With the clutch engaged, the engine's inertia is tied to the rear wheels and a light car's handbrake can't lock them.
+- **Only passing entries are in the test suite** (S15: power-over, handbrake, clutch kick, feint; AE: handbrake, clutch kick), so CI stays green. The rest are tracked in `NEXT_STEPS.md` with their measured times.
