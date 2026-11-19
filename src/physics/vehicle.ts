@@ -4,7 +4,9 @@ import { Engine, RADS_TO_RPM, RPM_TO_RADS } from './drivetrain';
 import { makeSample, type GroundSample, type PhysicsWorld, type WallHit } from './collision';
 import { SURFACES, surfaceGrip } from './surfaces';
 import { makeCurve, tireForces, type TireCurve, type TireResult } from './tire';
-import type { AssistSettings, CarPhysicsSpec, DiffSpec, DriverInput, EngineSpec, SurfaceId, TireCompound } from './types';
+import { makeTireState, relax, simForces, simFromClassic, thermal, type SimCompound, type SimTireState } from './simTire';
+import { defaultAlignment } from './types';
+import type { AlignmentSpec, AssistSettings, CarPhysicsSpec, DiffSpec, DriverInput, EngineSpec, SurfaceId, TireCompound } from './types';
 import { defaultAssists } from './types';
 
 const TIRES = tiresJson as Record<string, TireCompound>;
@@ -56,7 +58,16 @@ export interface Wheel {
   /** slide intensity 0..1 for smoke / marks / squeal */
   slide: number;
   absFactor: number;
+  /** Update 5 sim tire: compound data and persistent state */
+  sim: SimCompound;
+  st: SimTireState;
+  /** static camber (deg) and toe (deg, + = toe-in) from the alignment */
+  camberStatic: number;
+  toe: number;
+  restCompression: number;
 }
+
+export type PhysicsModel = 'classic' | 'sim';
 
 export interface ImpactEvent {
   speed: number;
@@ -147,9 +158,16 @@ export class Vehicle {
   private hit: WallHit = { depth: 0, nx: 0, nz: 0, px: 0, pz: 0, wall: null as never };
   private probe: TireResult = { fx: 0, fy: 0, slip: 0, slipRatio: 0, slipAngle: 0 };
 
-  constructor(spec: CarPhysicsSpec, assists: AssistSettings = defaultAssists()) {
+  /** 'classic' = the Update 1–4 model; 'sim' = Update 5 (360 Hz, sim tires, relaxation, thermal) */
+  readonly model: PhysicsModel;
+  /** last known-good state for the NaN guard */
+  private safe = { p: new Vector3(), q: new Quaternion(), t: -1 };
+  nanResets = 0;
+
+  constructor(spec: CarPhysicsSpec, assists: AssistSettings = defaultAssists(), model: PhysicsModel = 'classic') {
     this.spec = spec;
     this.assists = assists;
+    this.model = model;
     this.engine = new Engine(spec.engine, spec.gearbox);
     this.rebuild();
   }
@@ -170,6 +188,7 @@ export class Vehicle {
     const axleLoadF = (m * GRAVITY * s.cgToRear) / (s.cgToFront + s.cgToRear) / 2;
     const axleLoadR = (m * GRAVITY * s.cgToFront) / (s.cgToFront + s.cgToRear) / 2;
     const rest = sus.travel;
+    const al: AlignmentSpec = { ...defaultAlignment(), ...(s.alignment ?? {}) };
     for (let i = 0; i < 4; i++) {
       const front = i < 2;
       const left = i % 2 === 0;
@@ -211,6 +230,11 @@ export class Vehicle {
         brakeShare: (front ? s.brakeBias : 1 - s.brakeBias) / 2,
         result: { fx: 0, fy: 0, slip: 0, slipRatio: 0, slipAngle: 0 },
         vx: 0, vy: 0, slide: 0, absFactor: 1,
+        sim: tire.sim ?? simFromClassic(tire),
+        st: makeTireState(tire.sim ?? simFromClassic(tire), front ? al.pressureFront : al.pressureRear),
+        camberStatic: front ? al.camberFront : al.camberRear,
+        toe: front ? al.toeFront : al.toeRear,
+        restCompression: sag,
       });
     }
   }
@@ -252,18 +276,79 @@ export class Vehicle {
     this.engine.clutchLocked = true;
   }
 
+  /**
+   * Camber relative to the road: static alignment, minus camber gain in bump, plus body roll
+   * (rolling toward a wheel tips its top outward). Negative = top toward the car.
+   */
+  private updateCamber(w: Wheel, left: Vector3): void {
+    const travel = w.compression - w.restCompression;
+    const gain = ({ ...defaultAlignment(), ...(this.spec.alignment ?? {}) }).camberGain;
+    // roll: + when the car's left side drops
+    const rollDeg = (Math.asin(Math.max(-1, Math.min(1, left.y))) * -180) / Math.PI;
+    const side = w.left ? 1 : -1;
+    const camber = w.camberStatic - gain * travel + side * rollDeg;
+    w.st.camberDeg = camber;
+    // a left wheel with negative camber leans its top to the right (toward the car)
+    w.st.leanRight = (side * -camber * Math.PI) / 180;
+  }
+
   get yaw(): number {
     this.fwd.set(0, 0, 1).applyQuaternion(this.quaternion);
     return Math.atan2(this.fwd.x, this.fwd.z);
   }
 
   step(dt: number, rawInput: DriverInput, world: PhysicsWorld): void {
+    this.prevPosition.copy(this.position);
+    this.prevQuaternion.copy(this.quaternion);
+    if (this.model === 'classic') return this.stepOnce(dt, rawInput, world);
+    // Update 5 §1: the sim model runs at 360 Hz (3 sub-steps per 120 Hz tick)
+    const n = this.substeps;
+    const shiftUp = rawInput.shiftUp, shiftDown = rawInput.shiftDown;
+    for (let i = 0; i < n; i++) {
+      this.stepOnce(dt / n, rawInput, world);
+      rawInput.shiftUp = rawInput.shiftDown = false;
+      if (!this.guard()) break;
+    }
+    rawInput.shiftUp = shiftUp;
+    rawInput.shiftDown = shiftDown;
+  }
+
+  /** sub-steps per call in sim mode (3 → 360 Hz at a 120 Hz tick; 2 on the Low preset) */
+  substeps = 3;
+
+  /** NaN/infinity guard: restore the last safe pose and stop the car instead of exploding. */
+  private guard(): boolean {
+    const ok = Number.isFinite(this.position.x + this.position.y + this.position.z + this.velocity.x + this.velocity.y + this.velocity.z + this.angularVelocity.x + this.angularVelocity.y + this.angularVelocity.z + this.quaternion.w + this.engine.omega)
+      && this.wheels.every((w) => Number.isFinite(w.omega + w.st.alpha + w.st.tSurf));
+    if (ok) {
+      if (this.time - this.safe.t > 0.25) {
+        this.safe.p.copy(this.position);
+        this.safe.q.copy(this.quaternion);
+        this.safe.t = this.time;
+      }
+      return true;
+    }
+    this.nanResets++;
+    console.warn(`[physics] non-finite state at t=${this.time.toFixed(2)}s, restoring the last safe pose`);
+    this.position.copy(this.safe.p);
+    this.quaternion.copy(this.safe.q);
+    this.velocity.set(0, 0, 0);
+    this.angularVelocity.set(0, 0, 0);
+    this.engine.omega = this.spec.engine.idleRpm * (Math.PI / 30);
+    for (const w of this.wheels) {
+      w.omega = 0;
+      w.st.alpha = 0;
+      if (!Number.isFinite(w.st.tSurf)) w.st.tSurf = w.st.tCore = 40;
+    }
+    return false;
+  }
+
+  private stepOnce(dt: number, rawInput: DriverInput, world: PhysicsWorld): void {
     const s = this.spec;
     const a = this.assists;
     const eng = this.engine;
+    const sim = this.model === 'sim';
     this.time += dt;
-    this.prevPosition.copy(this.position);
-    this.prevQuaternion.copy(this.quaternion);
 
     const fwd = this.fwd.set(0, 0, 1).applyQuaternion(this.quaternion);
     const up = this.up.set(0, 1, 0).applyQuaternion(this.quaternion);
@@ -320,7 +405,7 @@ export class Vehicle {
     // drive: the engine sits on its launch rpm (on boost) and the clutch passes only what the driven
     // tires can take. Once the clutch is in, a wheelspin limiter carries on through the first two
     // gears. Steering, the handbrake, lifting or a slide hand control back to the driver.
-    if (speed < 0.5 && throttle > 0.9 && eng.gear === 1) {
+    if (speed < 0.5 && throttle > 0.9 && eng.gear === 1 && (a.tcs || a.driftAssist > 0)) {
       if (!this.launching) { this.launchKicked = false; this.launchWasStaged = false; }
       this.launching = true;
       this.launchFactor = 0.85;
@@ -364,6 +449,10 @@ export class Vehicle {
       if (!w.front) { w.steer = 0; continue; }
       const inner = (this.steerAngle > 0 && !w.left) || (this.steerAngle < 0 && w.left);
       w.steer = this.steerAngle * (inner ? 1 + ack : 1 - ack * 0.5);
+    }
+    if (sim) {
+      // static toe: + = toe-in (front of the wheel points toward the car's centre line)
+      for (const w of this.wheels) w.steer += ((w.left ? -1 : 1) * w.toe * Math.PI) / 180;
     }
 
     // ---- clutch / drive torque ----
@@ -526,9 +615,16 @@ export class Vehicle {
       const r = w.radius;
       let omega = w.omega;
       if (w.onGround && load > 0) {
-        tireForces(w.tire, w.curve, w.vx, w.vy, omega * r, load, grip, w.result);
         const eps = 0.05;
-        tireForces(w.tire, w.curve, w.vx, w.vy, (omega + eps) * r, load, grip, this.probe);
+        if (sim) {
+          relax(w.sim, w.st, w.vx, w.vy, load, dt);
+          this.updateCamber(w, left);
+          simForces(w.sim, w.st, w.vx, w.vy, omega * r, load, grip, w.result);
+          simForces(w.sim, w.st, w.vx, w.vy, (omega + eps) * r, load, grip, this.probe);
+        } else {
+          tireForces(w.tire, w.curve, w.vx, w.vy, omega * r, load, grip, w.result);
+          tireForces(w.tire, w.curve, w.vx, w.vy, (omega + eps) * r, load, grip, this.probe);
+        }
         const slope = Math.max(0, (this.probe.fx - w.result.fx) / eps);
         const denom = I + dt * r * slope;
         omega = omega + (dt * (Td - r * w.result.fx)) / denom;
@@ -584,7 +680,12 @@ export class Vehicle {
       w.spin += w.omega * dt;
       if (!w.onGround || w.load <= 0) { w.result.fx = 0; w.result.fy = 0; w.slide = 0; continue; }
       const grip = surfaceGrip(w.surface, wet) * w.grip;
-      tireForces(w.tire, w.curve, w.vx, w.vy, w.omega * w.radius, w.load, grip, w.result);
+      if (sim) {
+        simForces(w.sim, w.st, w.vx, w.vy, w.omega * w.radius, w.load, grip, w.result);
+        // sliding power heats the tread: |slip velocity| × |force|
+        const svx = w.omega * w.radius - w.vx, svy = w.vy;
+        thermal(w.sim, w.st, Math.hypot(svx * w.result.fx, svy * w.result.fy), Math.abs(w.vx), w.load, dt);
+      } else tireForces(w.tire, w.curve, w.vx, w.vy, w.omega * w.radius, w.load, grip, w.result);
       // rolling resistance + surface drag (sand, grass)
       const roll = (w.tire.rolling + SURFACES[w.surface].drag) * w.load * Math.tanh(w.vx / 0.6);
       const fx = w.result.fx - roll;
@@ -617,8 +718,10 @@ export class Vehicle {
     this.force.addScaledVector(this.velocity, -q * s.dragArea);
     const v2 = 0.5 * AIR_DENSITY * speed * speed;
     if (groundedWheels > 0) {
-      const dfF = v2 * s.downforceFront;
-      const dfR = v2 * s.downforceRear;
+      // sim: a car without aero makes a little lift at speed
+      const lift = sim ? Math.max(0, 0.12 - (s.downforceFront + s.downforceRear)) * 0.5 : 0;
+      const dfF = v2 * (s.downforceFront - lift);
+      const dfR = v2 * (s.downforceRear - lift);
       this.force.addScaledVector(up, -(dfF + dfR));
       // pitch moment from the front/rear split
       this.tmp.copy(left).multiplyScalar(dfF * s.cgToFront - dfR * s.cgToRear);

@@ -1,4 +1,4 @@
-import { Vehicle } from './vehicle';
+import { Vehicle, type PhysicsModel } from './vehicle';
 import { FlatWorld } from './collision';
 import { defaultAssists, emptyInput, type CarPhysicsSpec } from './types';
 
@@ -15,12 +15,12 @@ export const ARCADE_POWER = 1.15;
 const DT = 1 / 120;
 const cache = new Map<string, Performance>();
 
-export function measure(spec: CarPhysicsSpec, powerScale = ARCADE_POWER, maxSeconds = 70): Performance {
-  const key = JSON.stringify(spec) + powerScale;
+export function measure(spec: CarPhysicsSpec, powerScale = ARCADE_POWER, maxSeconds = 70, model: PhysicsModel = 'classic'): Performance {
+  const key = JSON.stringify(spec) + powerScale + model;
   const hit = cache.get(key);
   if (hit) return hit;
   const world = new FlatWorld();
-  const car = new Vehicle(structuredClone(spec), defaultAssists());
+  const car = new Vehicle(structuredClone(spec), defaultAssists(), model);
   car.engine.powerScale = powerScale;
   car.reset(world, 0, 0, 0);
   const inp = emptyInput();

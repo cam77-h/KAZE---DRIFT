@@ -10,7 +10,9 @@ export type SurfaceId =
   | 'dirt'
   | 'grass'
   | 'snow'
-  | 'ice';
+  | 'ice'
+  | 'worn'
+  | 'gutter';
 
 export type Layout = 'RWD' | 'FWD' | 'AWD';
 export type DiffType = 'open' | 'lsd15' | 'lsd2' | 'welded';
@@ -105,6 +107,26 @@ export interface TireCompound {
   rolling: number;
   /** smoke colour (hex) */
   smoke: string;
+  /** Update 5 sim-tire parameters (see simTire.ts) */
+  sim?: import('./simTire').SimCompound;
+}
+
+/** Update 5 alignment and tire set-up (all optional; sensible defaults are used). */
+export interface AlignmentSpec {
+  camberFront: number; // deg
+  camberRear: number;
+  toeFront: number; // deg, + = toe-in
+  toeRear: number;
+  caster: number; // deg
+  ackermann: number; // 0..1
+  /** camber gained per metre of bump travel (deg/m) */
+  camberGain: number;
+  pressureFront: number; // cold psi
+  pressureRear: number;
+}
+
+export function defaultAlignment(): AlignmentSpec {
+  return { camberFront: -1.5, camberRear: -0.8, toeFront: 0, toeRear: 0.1, caster: 6, ackermann: 0.5, camberGain: 35, pressureFront: 29, pressureRear: 28 };
 }
 
 export interface CarPhysicsSpec {
@@ -150,6 +172,7 @@ export interface CarPhysicsSpec {
   /** per-axle grip multipliers (prototype: front 2.0 / rear 2.15 → ratio 1 : 1.075) */
   gripFront: number;
   gripRear: number;
+  alignment?: Partial<AlignmentSpec>;
 }
 
 export interface DriverInput {

@@ -346,6 +346,7 @@ export class Menus {
       row('HUD scale', h1, undefined, hv);
       const [c1, cv] = slider(0, 1.5, 0.05, () => gp.cameraShake, (v) => (gp.cameraShake = v), (v) => `${Math.round(v * 100)}%`, 'gameplay');
       row('Camera shake', c1, undefined, cv);
+      row('Classic physics', toggle(() => gp.physicsModel === 'classic', (v) => (gp.physicsModel = v ? 'classic' : 'sim'), 'gameplay'), 'The Update 1–4 handling model. Off = the 360 Hz sim model (sim tires, relaxation, heat and wear). Applies on the next drive.');
       row('Telemetry overlay', toggle(() => gp.showTelemetry, (v) => (gp.showTelemetry = v), 'gameplay'), 'Per-wheel load, slip and surface. For tuners.');
     } else if (this.settingsTab === 'credits') {
       body.append(el('div', 'row', '<label>Kaze Drift</label><span></span><span></span><div class="desc">All car, brand and place names are fictional. Real badges on imported models are hidden and plates replaced. CC-BY models are credited below as their licenses require.</div>'));

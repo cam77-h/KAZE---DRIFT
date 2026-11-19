@@ -142,3 +142,53 @@ Choices made where the spec left room, one line of reasoning each. Newest at the
 - **Engine heat:** stock engines lose up to 6% power after minutes of flat-out running. Oil & Cooling upgrades slow this, and the race pack removes it.
 - **Build codes** are `KZ1-` plus base64url JSON of car, parts, tune and paint. Import checks every slot and option against the catalogue.
 - **Quick Upgrade** is a greedy planner: it repeatedly buys the best rating gain per yen (plus style preferences for Drift and Grip) under the class ceiling and the player's money and level, then shows the plan and total before buying.
+
+## Update 5
+
+- **`KAZE_DRIFT_UPDATE_3.md` still doesn't exist.** Update 4's Sections 4–7 were not built (see `NEXT_STEPS.md`). Update 5 §10 asks for the touge to be built in full if it's missing, so it is built there.
+- **The sim model lives inside the same `Vehicle` class,** selected by `physicsModel` ('sim' | 'classic'). The renderer, modes, tests and HUD keep one interface, and Classic stays bit-for-bit the Update 4 model behind Settings → Gameplay → Classic physics. Classic remains the default until the sim model passes every Update 5 test.
+
+### Step 1: physics core (§1–3)
+
+- **360 Hz = 3 sub-steps per 120 Hz tick** inside `Vehicle.step` (2 on the Low preset). The game loop's accumulator, interpolation and 0.1 s catch-up cap were already in place. Shift requests are applied on the first sub-step only.
+- **The NaN guard** checks the body, the engine and every wheel and tire state after each sub-step. On a non-finite value it restores the last safe pose (saved every 0.25 s), stops the car and logs a warning. The 100-seed × 60 s fuzz test hasn't triggered it once.
+- **Tire curve** (`src/physics/simTire.ts`, our own maths):
+  - Normalised slip s = slip ÷ peak slip. The force is s(2 − s) up to the peak (zero slope at the peak).
+  - Past the peak, it decays as a Gaussian shoulder to the falloff level.
+  - The falloff speed sets how fast it gets there.
+  The peak angle and falloff level are exactly the data values, which makes them testable and easy to tune.
+- **Compound values:**
+
+  | Compound | Peak angle | Falloff level |
+  |---|---|---|
+  | Street | 7° | 0.85 |
+  | Sport | 6.5° | 0.88 |
+  | Semi-slick | 6° | 0.90 |
+  | Slick | 5.5° | 0.88 |
+  | Drift | 8.5° | 0.92 (softest falloff speed, fastest wear) |
+
+  These come straight from the doc, plus our own slick, rally and snow values.
+- **Load sensitivity:** μ = μref (Fref/Fz)^(1−e) with Fref 3,000 N and e 0.80–0.83.
+- **Combined slip:** a friction ellipse built on the normalised slip vector, so the force direction follows the slip direction and each axis is scaled by its own μ.
+- **Camber:**
+  - A grip multiplier peaking at each compound's optimum (−1.2° to −2.5°).
+  - Plus camber thrust: 0.15 × Fz per radian of lean, fading once sliding.
+  - Camber relative to the road comes from static alignment − 35°/m camber gain in bump + body roll.
+- **Pressure:**
+  - Hot pressure follows the gas law from core temperature.
+  - Grip falls quadratically either side of the ideal hot pressure.
+  - Low pressure lengthens the relaxation length (a softer, slower tire).
+- **Relaxation length:** 0.35–0.55 m at the reference load, shorter at high load. It's a first-order lag on slip angle over distance rolled. The lagged angle is what the force curve sees.
+- **Thermal model:** two nodes.
+  - Heat in: sliding power (|slip velocity| × force) plus rolling hysteresis.
+  - Heat out: convection rising with speed, plus conduction to the core.
+  - Grip is 1.0 inside the compound's window, falling to 0.85 when cold and 0.80 when overheated.
+  - Tires start at the bottom of their window ("blankets"), so the acceleration targets don't depend on a warm-up lap.
+- **Wear** accrues from sliding energy and costs up to 15% grip.
+- **Self-aligning torque:** −Fy × pneumatic trail. The trail shrinks to near zero past the peak, as on a real tire. It's stored for the countersteer assist in §5.
+- **Low speed:** below 2 m/s the lateral force blends into a damped "sticky" contact, so parked cars don't creep or jitter.
+- **Surfaces now match the doc:** concrete 0.97, painted line 0.90 (0.75 wet), wet asphalt 0.75, gravel 0.60, grass 0.45, snow 0.35, ice 0.15. Two new surfaces: `worn` (0.95) and `gutter` (for the touge).
+- **Anti-roll bars are 30% of their old values on every car** (both models). The old bars gave a race-car roll gradient of about 1.8°/g. Street-based drift cars run 2.5–3°/g, and the doc asks for 2–5° of roll on the skidpad. The S15 now rolls about 2.2° at the limit. Every classic test still passes.
+- **Real pitch and roll:** in sim mode the car body shows only the simulated pitch and roll; the extra visual lean is off.
+- **Aero lift:** sim cars without aero get a little lift at speed (Cl·A up to 0.06 per axle).
+- **Launch control needs an assist:** it now only engages with TCS or drift assist on. With everything off, full throttle at a standstill does a burnout, as the doc requires.

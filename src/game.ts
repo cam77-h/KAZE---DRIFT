@@ -648,7 +648,7 @@ export class Game {
     const owned = this.currentCar();
     const carId = new URLSearchParams(location.search).get('car') ?? owned.carId;
     const testDrive = carId !== owned.carId;
-    const key = `${carId}|${owned.uid}|${testDrive ? '' : JSON.stringify(owned.parts) + JSON.stringify(owned.tune)}`;
+    const key = `${this.save.settings.gameplay.physicsModel}|${carId}|${owned.uid}|${testDrive ? '' : JSON.stringify(owned.parts) + JSON.stringify(owned.tune)}`;
     if (this.vehicle && this.carKey === key) return;
     const def = carDef(carId);
     const visual = await buildCarVisual(def, owned.paint.body, (owned.paint.finish as PaintFinish) ?? 'metallic');
@@ -660,7 +660,8 @@ export class Game {
       this.view.dispose();
     }
     if (this.save.perks.quickShift) spec.gearbox.shiftTime *= 0.7;
-    this.vehicle = new Vehicle(spec, this.save.settings.assists);
+    this.vehicle = new Vehicle(spec, this.save.settings.assists, this.save.settings.gameplay.physicsModel);
+    if (this.save.settings.graphics.preset === 'low') this.vehicle.substeps = 2;
     this.vehicle.engine.powerScale = this.save.settings.gameplay.arcadePower;
     this.view = new CarView(this.vehicle, visual, { stance: def.visual.stance ?? 0 });
     this.scene.add(this.view.group);

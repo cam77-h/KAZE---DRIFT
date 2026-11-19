@@ -75,6 +75,8 @@ export interface GameplaySettings {
   cameraShake: number;
   /** hidden safety knob: multiplies every engine's torque (default 1.15, not shown in the UI) */
   arcadePower: number;
+  /** Update 5: 'sim' (360 Hz sim tires) or 'classic' (the Update 1–4 model) */
+  physicsModel: 'sim' | 'classic';
 }
 
 export interface Settings {
@@ -151,7 +153,7 @@ export function defaultSettings(): Settings {
       touchLayout: 'buttons',
     },
     assists: defaultAssists(),
-    gameplay: { units: 'kmh', camera: 0, hudScale: 1, showTelemetry: false, cameraShake: 1, arcadePower: 1.15 },
+    gameplay: { units: 'kmh', camera: 0, hudScale: 1, showTelemetry: false, cameraShake: 1, arcadePower: 1.15, physicsModel: 'classic' },
   };
 }
 

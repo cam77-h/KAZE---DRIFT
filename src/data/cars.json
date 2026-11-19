@@ -96,8 +96,8 @@
    "bumpRear": 3000,
    "reboundFront": 4400,
    "reboundRear": 4000,
-   "arbFront": 16000,
-   "arbRear": 9000,
+   "arbFront": 4800,
+   "arbRear": 2700,
    "travel": 0.28,
    "cgHeight": 0.48
   },
@@ -187,8 +187,8 @@
     "bumpRear": 2400,
     "reboundFront": 3400,
     "reboundRear": 3100,
-    "arbFront": 12000,
-    "arbRear": 6000,
+    "arbFront": 3600,
+    "arbRear": 1800,
     "travel": 0.26,
     "cgHeight": 0.47
    },
@@ -991,8 +991,8 @@
     "bumpRear": 3300,
     "reboundFront": 4700,
     "reboundRear": 4300,
-    "arbFront": 20000,
-    "arbRear": 11000,
+    "arbFront": 6000,
+    "arbRear": 3300,
     "travel": 0.28,
     "cgHeight": 0.5
    },
