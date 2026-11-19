@@ -1,3 +1,4 @@
+import { DEFAULT_PROFILES, defaultWheel, type ProfileId, type SteerProfile } from '../input/steering';
 import { ACTIONS, applyPreset, assistPreset, type Action, type Settings } from '../core/settings';
 import { PAD_LABELS, keyLabel, type InputManager } from '../input/input';
 import { TRACKS, trackName } from '../data';
@@ -38,6 +39,7 @@ const TIPS = [
 export class Menus {
   private screens: Record<string, HTMLElement> = {};
   private settingsTab = 'graphics';
+  private steerProfileTab: ProfileId = 'gamepadDrift';
   private returnTo: string = 'title';
   onClose: ((to: string) => void) | null = null;
   private loadingBar!: HTMLElement;
@@ -312,14 +314,45 @@ export class Menus {
         });
         row(a.label, wrap, undefined, pad);
       }
-      const [s1, v1] = slider(0.5, 2, 0.05, () => c.steerSensitivity, (v) => (c.steerSensitivity = v), (v) => v.toFixed(2), 'controls');
-      row('Steering sensitivity', s1, 'Gamepad and touch. Higher reaches full lock sooner.', v1);
-      const [s2, v2] = slider(1, 3, 0.05, () => c.steerLinearity, (v) => (c.steerLinearity = v), (v) => v.toFixed(2), 'controls');
-      row('Steering linearity', s2, '1.0 is linear. Higher values give finer control near the centre.', v2);
-      const [s3, v3] = slider(0, 0.3, 0.01, () => c.deadzone, (v) => (c.deadzone = v), (v) => `${Math.round(v * 100)}%`, 'controls');
-      row('Stick deadzone', s3, undefined, v3);
-      const [s4, v4] = slider(0.5, 2, 0.05, () => c.keyboardSteerSpeed, (v) => (c.keyboardSteerSpeed = v), (v) => v.toFixed(2), 'controls');
-      row('Keyboard steering speed', s4, undefined, v4);
+      // Update 5 §5.2: per-device steering profiles (the pipeline: deadzone → gamma → speed → filter → speed sensitivity)
+      const pid = this.steerProfileTab;
+      row('Steering profile', seg([['gamepadDrift', 'PAD DRIFT'], ['gamepadGrip', 'PAD GRIP'], ['keyboard', 'KEYBOARD'], ['touch', 'TOUCH'], ['wheel', 'WHEEL']], () => this.steerProfileTab, (v) => { this.steerProfileTab = v as ProfileId; }, 'controls'), 'The game picks the profile from the device you use. Pad Drift is the gamepad default.');
+      const prof = () => ({ ...DEFAULT_PROFILES[pid], ...(c.steerProfiles?.[pid] ?? {}) });
+      const setP = (k: keyof SteerProfile, v: number) => {
+        c.steerProfiles = { ...(c.steerProfiles ?? {}), [pid]: { ...(c.steerProfiles?.[pid] ?? {}), [k]: v } };
+      };
+      const pct = (v: number) => `${Math.round(v * 100)}%`;
+      const ps: [keyof SteerProfile, string, number, number, number, (v: number) => string, string][] = [
+        ['deadzone', 'Deadzone', 0, 0.3, 0.01, pct, 'Stick movement ignored around the centre.'],
+        ['gamma', 'Gamma', 1, 3, 0.05, (v) => v.toFixed(2), 'Response curve. Higher = finer control near the centre.'],
+        ['speed', 'Steering speed', 0.1, 1, 0.01, pct, 'How fast the virtual steering wheel can turn.'],
+        ['returnSpeed', 'Return speed', 0.1, 1, 0.01, pct, 'How fast it comes back when you let go (keyboard).'],
+        ['filter', 'Filter', 0, 1, 0.01, pct, 'Smoothing. Higher is calmer but adds delay.'],
+        ['speedSens', 'Speed sensitivity', 0, 1, 0.01, pct, 'Less steering lock at high speed. Drift profiles keep full lock while sliding.'],
+        ['assist', 'Countersteer assist', 0, 1, 0.01, pct, 'Sim physics: the front wheels follow the direction of travel, like a wheel spinning through your hands. Stick centred holds the slide.'],
+      ];
+      for (const [k, label, lo, hi, st, fmt, desc] of ps) {
+        const [sl, val] = slider(lo, hi, st, () => prof()[k] as number, (v) => setP(k, v), fmt, 'controls');
+        row(label, sl, desc, val);
+      }
+      const rb = el('button', 'sbtn', 'RESET PROFILE');
+      rb.addEventListener('click', () => {
+        if (c.steerProfiles) delete c.steerProfiles[pid];
+        changed('controls');
+        this.renderSettings();
+      });
+      row('', rb);
+      // steering wheels through the Gamepad API (no force feedback in browsers)
+      const wh = () => ({ ...defaultWheel(), ...(c.wheel ?? {}) });
+      row('Steering wheel', seg([['auto', 'AUTO'], ['on', 'ON'], ['off', 'OFF']], () => c.wheelMode ?? 'auto', (v) => (c.wheelMode = v as 'auto'), 'controls'), 'Auto detects common wheels by name. Browsers give no force feedback.');
+      const [wr, wv] = slider(180, 1080, 10, () => wh().rotation, (v) => (c.wheel = { ...(c.wheel ?? {}), rotation: v }), (v) => `${v}°`, 'controls');
+      row('Wheel rotation', wr, 'Lock-to-lock. Steering stays 1:1 with the car up to its steering lock.', wv);
+      row('Invert wheel', toggle(() => wh().invertSteer, (v) => (c.wheel = { ...(c.wheel ?? {}), invertSteer: v }), 'controls'));
+      for (const [k, label] of [['throttle', 'Throttle axis'], ['brake', 'Brake axis'], ['clutch', 'Clutch axis']] as const) {
+        const [ax, axv] = slider(0, 7, 1, () => wh()[k].axis, (v) => (c.wheel = { ...(c.wheel ?? {}), [k]: { ...wh()[k], axis: v } }), (v) => `#${v}`, 'controls');
+        row(label, ax, undefined, axv);
+        row(`${label.split(' ')[0]} inverted`, toggle(() => wh()[k].rest < wh()[k].full, (v) => (c.wheel = { ...(c.wheel ?? {}), [k]: { ...wh()[k], rest: v ? -1 : 1, full: v ? 1 : -1 } }), 'controls'), 'Off: the pedal reads +1 released, −1 pressed (most wheels).');
+      }
       row('Vibration', toggle(() => c.vibration, (v) => (c.vibration = v), 'controls'));
     } else if (this.settingsTab === 'assists') {
       const a = S.assists;
@@ -346,6 +379,7 @@ export class Menus {
       row('HUD scale', h1, undefined, hv);
       const [c1, cv] = slider(0, 1.5, 0.05, () => gp.cameraShake, (v) => (gp.cameraShake = v), (v) => `${Math.round(v * 100)}%`, 'gameplay');
       row('Camera shake', c1, undefined, cv);
+      row('Classic physics', toggle(() => gp.physicsModel === 'classic', (v) => (gp.physicsModel = v ? 'classic' : 'sim'), 'gameplay'), 'The Update 1–4 handling model. Off = the 360 Hz sim model (sim tires, relaxation, heat and wear). Applies on the next drive.');
       row('Telemetry overlay', toggle(() => gp.showTelemetry, (v) => (gp.showTelemetry = v), 'gameplay'), 'Per-wheel load, slip and surface. For tuners.');
     } else if (this.settingsTab === 'credits') {
       body.append(el('div', 'row', '<label>Kaze Drift</label><span></span><span></span><div class="desc">All car, brand and place names are fictional. Real badges on imported models are hidden and plates replaced. CC-BY models are credited below as their licenses require.</div>'));

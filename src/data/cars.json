@@ -96,8 +96,8 @@
    "bumpRear": 3000,
    "reboundFront": 4400,
    "reboundRear": 4000,
-   "arbFront": 16000,
-   "arbRear": 9000,
+   "arbFront": 4800,
+   "arbRear": 2700,
    "travel": 0.28,
    "cgHeight": 0.48
   },
@@ -187,8 +187,8 @@
     "bumpRear": 2400,
     "reboundFront": 3400,
     "reboundRear": 3100,
-    "arbFront": 12000,
-    "arbRear": 6000,
+    "arbFront": 3600,
+    "arbRear": 1800,
     "travel": 0.26,
     "cgHeight": 0.47
    },
@@ -322,7 +322,7 @@
     "shiftTime": 0.08,
     "efficiency": 0.85
    },
-   "clutchTorque": 330,
+   "clutchTorque": 450,
    "diff": {
     "type": "open",
     "preload": 0,
@@ -553,7 +553,7 @@
     "shiftTime": 0.08,
     "efficiency": 0.85
    },
-   "clutchTorque": 480,
+   "clutchTorque": 650,
    "tireFront": "sport",
    "tireRear": "sport",
    "dragArea": 0.64,
@@ -798,7 +798,8 @@
    "wheelRadius": 0.315,
    "length": 4.3,
    "width": 1.785,
-   "height": 1.268
+   "height": 1.268,
+   "clutchTorque": 580
   },
   "visual": {
    "model": "glb",
@@ -882,7 +883,8 @@
    },
    "gearbox": {
     "final": 5.537
-   }
+   },
+   "clutchTorque": 550
   },
   "visual": {
    "model": "s15",
@@ -917,35 +919,35 @@
     "torqueCurve": [
      [
       800,
-      361
+      227
      ],
      [
       2000,
-      494
+      311
      ],
      [
       3000,
-      627
+      395
      ],
      [
       4400,
-      745
+      469
      ],
      [
       5500,
-      722
+      455
      ],
      [
       6800,
-      646
+      407
      ],
      [
       7500,
-      570
+      359
      ],
      [
       8000,
-      494
+      311
      ]
     ],
     "engineBrake": 75,
@@ -973,7 +975,7 @@
     "shiftTime": 0.08,
     "efficiency": 0.85
    },
-   "clutchTorque": 620,
+   "clutchTorque": 800,
    "frontDiff": {
     "type": "open",
     "preload": 0,
@@ -991,8 +993,8 @@
     "bumpRear": 3300,
     "reboundFront": 4700,
     "reboundRear": 4300,
-    "arbFront": 20000,
-    "arbRear": 11000,
+    "arbFront": 6000,
+    "arbRear": 3300,
     "travel": 0.28,
     "cgHeight": 0.5
    },

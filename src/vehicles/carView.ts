@@ -88,7 +88,9 @@ export class CarView {
     this.group.position.lerpVectors(v.prevPosition, v.position, alpha);
     this.group.quaternion.slerpQuaternions(v.prevQuaternion, v.quaternion, alpha);
 
-    if (dt > 0) {
+    // the sim model has real pitch and roll from the suspension: no added visual lean
+    if (dt > 0 && v.model === 'sim') this.body.rotation.set(0, 0, 0);
+    else if (dt > 0) {
       const acc = this.tmpV.copy(v.velocity).sub(this.lastVel).divideScalar(Math.max(dt, 1e-3));
       this.lastVel.copy(v.velocity);
       acc.applyQuaternion(this.tmpQ.copy(v.quaternion).invert());

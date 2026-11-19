@@ -142,3 +142,87 @@ Choices made where the spec left room, one line of reasoning each. Newest at the
 - **Engine heat:** stock engines lose up to 6% power after minutes of flat-out running. Oil & Cooling upgrades slow this, and the race pack removes it.
 - **Build codes** are `KZ1-` plus base64url JSON of car, parts, tune and paint. Import checks every slot and option against the catalogue.
 - **Quick Upgrade** is a greedy planner: it repeatedly buys the best rating gain per yen (plus style preferences for Drift and Grip) under the class ceiling and the player's money and level, then shows the plan and total before buying.
+
+## Update 5
+
+- **`KAZE_DRIFT_UPDATE_3.md` still doesn't exist.** Update 4's Sections 4–7 were not built (see `NEXT_STEPS.md`). Update 5 §10 asks for the touge to be built in full if it's missing, so it is built there.
+- **The sim model lives inside the same `Vehicle` class,** selected by `physicsModel` ('sim' | 'classic'). The renderer, modes, tests and HUD keep one interface, and Classic stays bit-for-bit the Update 4 model behind Settings → Gameplay → Classic physics. Classic remains the default until the sim model passes every Update 5 test.
+
+### Step 1: physics core (§1–3)
+
+- **360 Hz = 3 sub-steps per 120 Hz tick** inside `Vehicle.step` (2 on the Low preset). The game loop's accumulator, interpolation and 0.1 s catch-up cap were already in place. Shift requests are applied on the first sub-step only.
+- **The NaN guard** checks the body, the engine and every wheel and tire state after each sub-step. On a non-finite value it restores the last safe pose (saved every 0.25 s), stops the car and logs a warning. The 100-seed × 60 s fuzz test hasn't triggered it once.
+- **Tire curve** (`src/physics/simTire.ts`, our own maths):
+  - Normalised slip s = slip ÷ peak slip. The force is s(2 − s) up to the peak (zero slope at the peak).
+  - Past the peak, it decays as a Gaussian shoulder to the falloff level.
+  - The falloff speed sets how fast it gets there.
+  The peak angle and falloff level are exactly the data values, which makes them testable and easy to tune.
+- **Compound values:**
+
+  | Compound | Peak angle | Falloff level |
+  |---|---|---|
+  | Street | 7° | 0.85 |
+  | Sport | 6.5° | 0.88 |
+  | Semi-slick | 6° | 0.90 |
+  | Slick | 5.5° | 0.88 |
+  | Drift | 8.5° | 0.92 (softest falloff speed, fastest wear) |
+
+  These come straight from the doc, plus our own slick, rally and snow values.
+- **Load sensitivity:** μ = μref (Fref/Fz)^(1−e) with Fref 3,000 N and e 0.80–0.83.
+- **Combined slip:** a friction ellipse built on the normalised slip vector, so the force direction follows the slip direction and each axis is scaled by its own μ.
+- **Camber:**
+  - A grip multiplier peaking at each compound's optimum (−1.2° to −2.5°).
+  - Plus camber thrust: 0.15 × Fz per radian of lean, fading once sliding.
+  - Camber relative to the road comes from static alignment − 35°/m camber gain in bump + body roll.
+- **Pressure:**
+  - Hot pressure follows the gas law from core temperature.
+  - Grip falls quadratically either side of the ideal hot pressure.
+  - Low pressure lengthens the relaxation length (a softer, slower tire).
+- **Relaxation length:** 0.35–0.55 m at the reference load, shorter at high load. It's a first-order lag on slip angle over distance rolled. The lagged angle is what the force curve sees.
+- **Thermal model:** two nodes.
+  - Heat in: sliding power (|slip velocity| × force) plus rolling hysteresis.
+  - Heat out: convection rising with speed, plus conduction to the core.
+  - Grip is 1.0 inside the compound's window, falling to 0.85 when cold and 0.80 when overheated.
+  - Tires start at the bottom of their window ("blankets"), so the acceleration targets don't depend on a warm-up lap.
+- **Wear** accrues from sliding energy and costs up to 15% grip.
+- **Self-aligning torque:** −Fy × pneumatic trail. The trail shrinks to near zero past the peak, as on a real tire. It's stored for the countersteer assist in §5.
+- **Low speed:** below 2 m/s the lateral force blends into a damped "sticky" contact, so parked cars don't creep or jitter.
+- **Surfaces now match the doc:** concrete 0.97, painted line 0.90 (0.75 wet), wet asphalt 0.75, gravel 0.60, grass 0.45, snow 0.35, ice 0.15. Two new surfaces: `worn` (0.95) and `gutter` (for the touge).
+- **Anti-roll bars are 30% of their old values on every car** (both models). The old bars gave a race-car roll gradient of about 1.8°/g. Street-based drift cars run 2.5–3°/g, and the doc asks for 2–5° of roll on the skidpad. The S15 now rolls about 2.2° at the limit. Every classic test still passes.
+- **Real pitch and roll:** in sim mode the car body shows only the simulated pitch and roll; the extra visual lean is off.
+- **Aero lift:** sim cars without aero get a little lift at speed (Cl·A up to 0.06 per axle).
+- **Launch control needs an assist:** it now only engages with TCS or drift assist on. With everything off, full throttle at a standstill does a burnout, as the doc requires.
+
+### Step 2: drivetrain (§4)
+
+- **Every clutch now has 35% headroom over its tuned peak torque** (with arcadePower). Update 4's torque scaling had pushed the Raiden (about 860 N·m) past its 620 N·m clutch, and the Kumo, Hoshi, R7 and S15 close to theirs. The Raiden's clutch slipped at full throttle in every gear: it sat at the limiter in 6th, its launch was chaotic, and more torque made it slower. The tuner had compensated with a 1.9× torque scale. With the clutch fixed, the Raiden's torque is retuned to 0.63× of that (1.2× the original curve), and it hits 4.3 s and 13 s in both models.
+- **Sim LSD:** every LSD type takes power lock on throttle and coast lock off throttle (the old 2-way type ignored coast). Preload adds on top. Lock ≥ 100% means fully locked, so preload no longer matters at 100/100, as the doc describes. Open and welded are unchanged.
+- **Clutch heat (sim):** slip power heats the clutch. Above 250 °C its capacity fades (to 60% at most), and it cools toward 60 °C.
+- **Clutch kick:** this already worked from the physics: the clutch pedal opens the clutch, the engine revs, and releasing dumps the stored energy into the rears. It is now tested on the S15 (2nd gear, 60 km/h, kick at 6,000+ rpm → rear slip over 0.3, drift angle over 12°).
+- **Rev-matching on downshift** is the existing shift synchroniser, which matches revs to the new gear during the shift time.
+- **Gear hold in a drift (auto box):** unchanged and already in place. No upshift while sliding unless the limiter has been bouncing for 0.4 s; no downshift while sliding or on the handbrake.
+- **`tests/accel.test.ts` checks every car's targets in both physics models.**
+
+### Step 3: steering and input (§5)
+
+- **One input pipeline, in `src/input/steering.ts`:** raw device value → deadzone (rescaled so full lock is still reachable) → gamma → steering speed (a rate-limited virtual steering wheel, with a separate return speed) → filter (an exponential smoothing time of 0–120 ms) → speed sensitivity (max lock down to 35% at about 150 km/h). The doc's percentages map onto those ranges. `Input` now only reports raw values and the device in use; `Game` runs the pipeline with the car's speed and slide state.
+- **The drift profile is the gamepad default everywhere,** because every mode in this game is a drift mode. Pad Grip stays selectable.
+- **Classic physics** gets the same pipeline but no speed sensitivity, because it keeps its own speed-sensitive steering assist.
+- **The countersteer assist runs only on the sim model.** Free steering = the angle that points the front wheels along the front axle's velocity (body velocity plus yaw rate × the CG-to-front-axle distance), clamped to the lock. Assisted angle = free + input × (lock ∓ free), so the stick can still reach either full lock. The final angle blends raw and assisted by strength × slide blend. The slide blend ramps from 6° to 10° of rear-axle slip. It only aims the wheels along the travel direction and never adds yaw of its own.
+- **The sim model's steering rack turns at 9 rad/s** (classic 5 rad/s); the input pipeline does the smoothing.
+- **Ackermann is adjustable (sim):** 0 = parallel, 1 = geometric Ackermann for the car's wheelbase and track. Caster tilts the outside front wheel's top inward when steering (caster × sin of the steer angle, in degrees of camber).
+- **Wheels:**
+  - Detected by Gamepad API id (G29/G920/T300/Fanatec/Moza…, or forced on/off in Settings).
+  - Steering is 1:1: the car's steering-wheel rotation = lock × steering ratio (default 13:1). A 900° wheel reaches full lock on a stock 35° car and 99% with a 70° angle kit.
+  - Pedals are calibrated axes (rest/full) with an inversion toggle. Defaults follow the common "+1 released, −1 pressed" layout.
+  - No force feedback: browsers don't expose force-feedback effects for wheels through the Gamepad API (only dual-rumble on some pads).
+- **The §5 "Done when" test** uses a drift-prepared S15: 60° angle kit, locked 2-way diff, drift tires, −6.5° front camber. The doc's skidpad drift implies a drift setup, and Section 7 turns this into the Drift Base preset.
+  - A bot using only throttle and a stick limited to ±0.25 holds 30–45° for over 10 s with the 70% assist.
+  - With the assist off, the same inputs spin the car.
+  - The bot is a PD controller on drift angle; the rate term stands in for a player reacting to the car's rotation.
+
+### Step 4: drift techniques (§6), in progress
+
+- **Techniques are scripted inputs only** (`tests/sim/techniques.ts`). After the entry, the same throttle + small-stick hold bot takes over. "Within 2 s" counts from each technique's trigger: the throttle stab, the handbrake pull, the clutch drop, or the lift. Lift-off, for example, starts with a second of normal cornering.
+- **The handbrake entry dips the clutch, as real drivers do.** With the clutch engaged, the engine's inertia is tied to the rear wheels and a light car's handbrake can't lock them.
+- **Only passing entries are in the test suite** (S15: power-over, handbrake, clutch kick, feint; AE: handbrake, clutch kick), so CI stays green. The rest are tracked in `NEXT_STEPS.md` with their measured times.

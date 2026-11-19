@@ -18,6 +18,7 @@ import { Environment } from './render/environment';
 import { PostStack } from './render/post';
 import { ChaseCamera } from './render/camera';
 import { SpeedLines } from './render/speedLines';
+import { DEFAULT_PROFILES, profileFor, SteerPipeline, type SteerDevice } from './input/steering';
 import { Showroom } from './render/showroom';
 import { ShowroomUi, ownedToShowroom } from './ui/showroomUi';
 import { UpgradeShop } from './ui/upgradeShop';
@@ -648,7 +649,7 @@ export class Game {
     const owned = this.currentCar();
     const carId = new URLSearchParams(location.search).get('car') ?? owned.carId;
     const testDrive = carId !== owned.carId;
-    const key = `${carId}|${owned.uid}|${testDrive ? '' : JSON.stringify(owned.parts) + JSON.stringify(owned.tune)}`;
+    const key = `${this.save.settings.gameplay.physicsModel}|${carId}|${owned.uid}|${testDrive ? '' : JSON.stringify(owned.parts) + JSON.stringify(owned.tune)}`;
     if (this.vehicle && this.carKey === key) return;
     const def = carDef(carId);
     const visual = await buildCarVisual(def, owned.paint.body, (owned.paint.finish as PaintFinish) ?? 'metallic');
@@ -660,7 +661,8 @@ export class Game {
       this.view.dispose();
     }
     if (this.save.perks.quickShift) spec.gearbox.shiftTime *= 0.7;
-    this.vehicle = new Vehicle(spec, this.save.settings.assists);
+    this.vehicle = new Vehicle(spec, this.save.settings.assists, this.save.settings.gameplay.physicsModel);
+    if (this.save.settings.graphics.preset === 'low') this.vehicle.substeps = 2;
     this.vehicle.engine.powerScale = this.save.settings.gameplay.arcadePower;
     this.view = new CarView(this.vehicle, visual, { stance: def.visual.stance ?? 0 });
     this.scene.add(this.view.group);
@@ -825,6 +827,27 @@ export class Game {
     if (v.position.y < -50) this.resetCar();
   }
 
+  private steerPipe = new SteerPipeline();
+
+  /** Update 5 §5.2: device profile → deadzone, gamma, speed, filter, speed sensitivity; sets the assist */
+  private steerInput(raw: number, dt: number): number {
+    const v = this.vehicle;
+    const c = this.save.settings.controls;
+    const device = this.input.lastDevice as SteerDevice;
+    // the drift profile is the default everywhere: every mode in this game is a drift mode
+    const id = profileFor(device, true);
+    const p = { ...DEFAULT_PROFILES[id], ...(c.steerProfiles?.[id] ?? {}) };
+    if (v) {
+      this.input.carLockDeg = (v.spec.steerLock * 180) / Math.PI;
+      this.input.carSteerRatio = v.spec.steerRatio ?? 13;
+      v.assists.countersteer = p.assist;
+    }
+    const sim = v?.model === 'sim';
+    const sliding = !!v && Math.abs(v.telemetry.driftAngle) > 0.12;
+    // the classic model has its own speed-sensitive steering assist
+    return this.steerPipe.update(raw, dt, sim ? p : { ...p, speedSens: 0 }, sim ? v!.telemetry.speed : 0, sliding);
+  }
+
   private render(dt: number, alpha: number): void {
     const v = this.vehicle, view = this.view;
     if (this.state.is('drive')) {
@@ -832,7 +855,7 @@ export class Game {
       const di = this.driverInput;
       di.throttle = raw.throttle;
       di.brake = raw.brake;
-      di.steer = raw.steer;
+      di.steer = this.steerInput(raw.steer, dt);
       di.handbrake = raw.handbrake;
       di.clutch = raw.clutch;
       if (this.input.consume('shiftUp')) di.shiftUp = true;

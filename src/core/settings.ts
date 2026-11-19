@@ -1,4 +1,5 @@
 import { defaultAssists, expertAssists, type AssistSettings } from '../physics/types';
+import type { ProfileId, SteerProfile, WheelConfig } from '../input/steering';
 
 export type Action =
   | 'throttle'
@@ -65,6 +66,11 @@ export interface ControlSettings {
   /** keyboard steering speed (how fast digital steering ramps) */
   keyboardSteerSpeed: number;
   touchLayout: 'buttons' | 'tilt';
+  /** Update 5 §5.2: per-device steering profiles (missing fields fall back to the defaults) */
+  steerProfiles?: Partial<Record<ProfileId, Partial<SteerProfile>>>;
+  /** steering wheel: 'auto' detects common wheels by name */
+  wheelMode?: 'auto' | 'on' | 'off';
+  wheel?: Partial<WheelConfig>;
 }
 
 export interface GameplaySettings {
@@ -75,6 +81,8 @@ export interface GameplaySettings {
   cameraShake: number;
   /** hidden safety knob: multiplies every engine's torque (default 1.15, not shown in the UI) */
   arcadePower: number;
+  /** Update 5: 'sim' (360 Hz sim tires) or 'classic' (the Update 1–4 model) */
+  physicsModel: 'sim' | 'classic';
 }
 
 export interface Settings {
@@ -151,7 +159,7 @@ export function defaultSettings(): Settings {
       touchLayout: 'buttons',
     },
     assists: defaultAssists(),
-    gameplay: { units: 'kmh', camera: 0, hudScale: 1, showTelemetry: false, cameraShake: 1, arcadePower: 1.15 },
+    gameplay: { units: 'kmh', camera: 0, hudScale: 1, showTelemetry: false, cameraShake: 1, arcadePower: 1.15, physicsModel: 'classic' },
   };
 }
 

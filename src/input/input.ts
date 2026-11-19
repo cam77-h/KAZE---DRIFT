@@ -1,7 +1,8 @@
+import { defaultWheel, looksLikeWheel, pedal, wheelSteer, type WheelConfig } from './steering';
 import type { Action, ControlSettings } from '../core/settings';
 import { emptyInput, type DriverInput } from '../physics/types';
 
-export type Device = 'keyboard' | 'gamepad' | 'touch';
+export type Device = 'keyboard' | 'gamepad' | 'touch' | 'wheel';
 
 /** Shapes an analog stick value: deadzone, then a power curve (linearity), then sensitivity. */
 export function shapeAxis(v: number, deadzone: number, linearity: number, sensitivity: number): number {
@@ -126,7 +127,9 @@ export class InputManager {
     const brT = this.keyDown('brake') ? 1 : 0;
     this.kbBrake += Math.max(-10 * dt, Math.min(10 * dt, brT - this.kbBrake));
 
-    let steer = this.kbSteer;
+    // Update 5: the steering pipeline (steering.ts) does the ramp and shaping; this is the raw value
+    let steer = target;
+    this.rawSteerKb = target;
     let throttle = this.kbThrottle;
     let brake = this.kbBrake;
     let handbrake = this.keyDown('handbrake') ? 1 : 0;
@@ -136,7 +139,21 @@ export class InputManager {
     const pad = this.gamepad();
     if (pad) {
       const ax = pad.axes[0] ?? 0;
-      const shaped = shapeAxis(ax, s.deadzone, s.steerLinearity, s.steerSensitivity);
+      const shaped = Math.abs(ax) > 0.02 ? ax : 0;
+      // a steering wheel: full rotation mapped to the car's lock, pedals from calibrated axes
+      const wheelOn = s.wheelMode === 'on' || (s.wheelMode !== 'off' && looksLikeWheel(pad.id));
+      if (wheelOn) {
+        const cfg: WheelConfig = { ...defaultWheel(), ...(s.wheel ?? {}) };
+        this.lastDevice = 'wheel';
+        st.steer = wheelSteer(pad.axes[cfg.steerAxis] ?? 0, cfg, this.carLockDeg, this.carSteerRatio);
+        st.throttle = pedal(pad.axes, cfg.throttle);
+        st.brake = pedal(pad.axes, cfg.brake);
+        st.clutch = pedal(pad.axes, cfg.clutch);
+        st.handbrake = Math.max(this.keyDown('handbrake') ? 1 : 0, this.keyDownPad(pad, 'handbrake') ? 1 : 0);
+        this.padEdges(pad);
+        if (this.override) Object.assign(st, this.override);
+        return st;
+      }
       const btn = (a: Action) => {
         let v = 0;
         for (const i of s.pad[a] ?? []) v = Math.max(v, pad.buttons[i]?.value ?? 0, pad.buttons[i]?.pressed ? 1 : 0);
@@ -151,18 +168,7 @@ export class InputManager {
       brake = Math.max(brake, pBr > 0.04 ? pBr : 0);
       handbrake = Math.max(handbrake, btn('handbrake'));
       clutch = Math.max(clutch, btn('clutch'));
-      // edge-triggered buttons
-      const edges: Action[] = ['shiftUp', 'shiftDown', 'camera', 'reset', 'pause'];
-      for (const a of edges) {
-        for (const i of s.pad[a] ?? []) {
-          const down = !!pad.buttons[i]?.pressed;
-          if (down && !this.padPrev[i]) {
-            this.lastDevice = 'gamepad';
-            this.fire(a);
-          }
-        }
-      }
-      this.padPrev = pad.buttons.map((b) => b.pressed);
+      this.padEdges(pad);
       if (this.keyDownPad(pad, 'lookBack')) this.lookBackPad = true;
       else this.lookBackPad = false;
     }
@@ -184,6 +190,24 @@ export class InputManager {
     if (this.override) Object.assign(st, this.override);
     return st;
   }
+
+  /** edge-triggered pad buttons (shifts, camera, reset, pause) */
+  private padEdges(pad: Gamepad): void {
+    const edges: Action[] = ['shiftUp', 'shiftDown', 'camera', 'reset', 'pause'];
+    for (const a of edges) {
+      for (const i of this.settings.pad[a] ?? []) {
+        const down = !!pad.buttons[i]?.pressed;
+        if (down && !this.padPrev[i]) this.fire(a);
+      }
+    }
+    this.padPrev = pad.buttons.map((b) => b.pressed);
+  }
+
+  /** raw keyboard steer target (-1, 0, 1) */
+  rawSteerKb = 0;
+  /** the current car's lock and steering ratio, for wheel mapping (set by the game) */
+  carLockDeg = 35;
+  carSteerRatio = 13;
 
   private lookBackPad = false;
   private keyDownPad(pad: Gamepad, a: Action): boolean {

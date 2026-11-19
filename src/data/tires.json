@@ -10,7 +10,23 @@
   "shapeE": -0.4,
   "loadSensitivity": 0.1,
   "rolling": 0.0104,
-  "smoke": "#dcdcdc"
+  "smoke": "#dcdcdc",
+  "sim": {
+   "peakAngleDeg": 7.0,
+   "peakRatio": 0.12,
+   "falloffLevel": 0.85,
+   "falloffSpeed": 1.0,
+   "muLat": 1.12,
+   "muLong": 1.12,
+   "loadRef": 3000,
+   "loadExp": 0.8,
+   "tempLo": 70,
+   "tempHi": 90,
+   "idealPsi": 32,
+   "relaxation": 0.5,
+   "wearRate": 0.015,
+   "camberOpt": -1.2
+  }
  },
  "sport": {
   "id": "sport",
@@ -23,7 +39,23 @@
   "shapeE": -0.4,
   "loadSensitivity": 0.09,
   "rolling": 0.0096,
-  "smoke": "#e0e0e0"
+  "smoke": "#e0e0e0",
+  "sim": {
+   "peakAngleDeg": 6.5,
+   "peakRatio": 0.11,
+   "falloffLevel": 0.88,
+   "falloffSpeed": 1.1,
+   "muLat": 1.22,
+   "muLong": 1.22,
+   "loadRef": 3000,
+   "loadExp": 0.8,
+   "tempLo": 75,
+   "tempHi": 95,
+   "idealPsi": 30,
+   "relaxation": 0.45,
+   "wearRate": 0.02,
+   "camberOpt": -1.5
+  }
  },
  "semislick": {
   "id": "semislick",
@@ -36,7 +68,23 @@
   "shapeE": -0.2,
   "loadSensitivity": 0.08,
   "rolling": 0.0096,
-  "smoke": "#e8e8e8"
+  "smoke": "#e8e8e8",
+  "sim": {
+   "peakAngleDeg": 6.0,
+   "peakRatio": 0.1,
+   "falloffLevel": 0.9,
+   "falloffSpeed": 1.3,
+   "muLat": 1.42,
+   "muLong": 1.4,
+   "loadRef": 3000,
+   "loadExp": 0.82,
+   "tempLo": 80,
+   "tempHi": 100,
+   "idealPsi": 28,
+   "relaxation": 0.4,
+   "wearRate": 0.03,
+   "camberOpt": -2.0
+  }
  },
  "drift": {
   "id": "drift",
@@ -49,7 +97,23 @@
   "shapeE": -0.6,
   "loadSensitivity": 0.08,
   "rolling": 0.0096,
-  "smoke": "#f2f2f2"
+  "smoke": "#f2f2f2",
+  "sim": {
+   "peakAngleDeg": 8.5,
+   "peakRatio": 0.13,
+   "falloffLevel": 0.92,
+   "falloffSpeed": 0.6,
+   "muLat": 1.28,
+   "muLong": 1.23,
+   "loadRef": 3000,
+   "loadExp": 0.8,
+   "tempLo": 80,
+   "tempHi": 100,
+   "idealPsi": 30,
+   "relaxation": 0.5,
+   "wearRate": 0.06,
+   "camberOpt": -2.0
+  }
  },
  "rally": {
   "id": "rally",
@@ -62,7 +126,23 @@
   "shapeE": -0.5,
   "loadSensitivity": 0.08,
   "rolling": 0.0112,
-  "smoke": "#cfc8bb"
+  "smoke": "#cfc8bb",
+  "sim": {
+   "peakAngleDeg": 8.0,
+   "peakRatio": 0.14,
+   "falloffLevel": 0.9,
+   "falloffSpeed": 0.7,
+   "muLat": 1.12,
+   "muLong": 1.12,
+   "loadRef": 3000,
+   "loadExp": 0.8,
+   "tempLo": 60,
+   "tempHi": 85,
+   "idealPsi": 28,
+   "relaxation": 0.55,
+   "wearRate": 0.02,
+   "camberOpt": -1.0
+  }
  },
  "snow": {
   "id": "snow",
@@ -75,7 +155,23 @@
   "shapeE": -0.5,
   "loadSensitivity": 0.08,
   "rolling": 0.012,
-  "smoke": "#d6dde4"
+  "smoke": "#d6dde4",
+  "sim": {
+   "peakAngleDeg": 9.0,
+   "peakRatio": 0.14,
+   "falloffLevel": 0.9,
+   "falloffSpeed": 0.6,
+   "muLat": 1.0,
+   "muLong": 1.0,
+   "loadRef": 3000,
+   "loadExp": 0.8,
+   "tempLo": 20,
+   "tempHi": 50,
+   "idealPsi": 28,
+   "relaxation": 0.55,
+   "wearRate": 0.015,
+   "camberOpt": -1.0
+  }
  },
  "slick": {
   "id": "slick",
@@ -88,6 +184,22 @@
   "shapeE": -0.1,
   "loadSensitivity": 0.07,
   "rolling": 0.0105,
-  "smoke": "#ececec"
+  "smoke": "#ececec",
+  "sim": {
+   "peakAngleDeg": 5.5,
+   "peakRatio": 0.09,
+   "falloffLevel": 0.88,
+   "falloffSpeed": 1.6,
+   "muLat": 1.5,
+   "muLong": 1.5,
+   "loadRef": 3000,
+   "loadExp": 0.83,
+   "tempLo": 85,
+   "tempHi": 105,
+   "idealPsi": 26,
+   "relaxation": 0.35,
+   "wearRate": 0.035,
+   "camberOpt": -2.5
+  }
  }
 }
