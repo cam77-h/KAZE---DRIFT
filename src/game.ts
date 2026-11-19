@@ -17,6 +17,12 @@ import type { PaintFinish } from './vehicles/paint';
 import { Environment } from './render/environment';
 import { PostStack } from './render/post';
 import { ChaseCamera } from './render/camera';
+import { SpeedLines } from './render/speedLines';
+import { Showroom } from './render/showroom';
+import { ShowroomUi, ownedToShowroom } from './ui/showroomUi';
+import { UpgradeShop } from './ui/upgradeShop';
+import { buyCar } from './ui/shop';
+import { applyBuild } from './garage/parts';
 import { ConeField, SkidMarks, SmokeSystem } from './render/effects';
 import { setMaxAnisotropy } from './render/textures';
 import { CarAudio } from './audio/engineAudio';
@@ -50,6 +56,11 @@ export class Game {
   readonly scene = new THREE.Scene();
   readonly env: Environment;
   readonly post: PostStack;
+  private speedLines: SpeedLines;
+  private showroom: Showroom;
+  private showroomUi: ShowroomUi;
+  private upgrades: UpgradeShop;
+  private showroomFrom: 'select' | 'dealer' | 'mycars' = 'select';
   readonly cam: ChaseCamera;
   readonly input: InputManager;
   readonly audio: CarAudio;
@@ -108,6 +119,7 @@ export class Game {
     this.input = new InputManager(s.controls);
     this.audio = new CarAudio(s.audio);
     this.uiRoot = document.getElementById('ui') ?? document.body;
+    this.speedLines = new SpeedLines(this.uiRoot);
     this.hud = new Hud(this.uiRoot);
     this.hud.onPause = () => this.pause();
     this.touch = new TouchControls(this.uiRoot, this.input);
@@ -153,6 +165,68 @@ export class Game {
       selectCar: (uid) => {
         this.save.garage.selected = uid;
         this.persist();
+      },
+      carSelect: () => this.openShowroom('select'),
+      openMyCars: () => this.openShowroom('mycars'),
+    });
+    this.showroom = new Showroom(this.renderer, 16 / 9);
+    this.showroomUi = new ShowroomUi(this.uiRoot, this.showroom, () => this.save, {
+      click: () => this.audio.click(),
+      toast: (m) => this.hud.toast(m),
+      choose: (uid) => {
+        this.closeShowroom();
+        this.flow.chooseCar(uid);
+      },
+      buy: (carId, paint, finish) => {
+        const r = buyCar(this.save, carId, { body: paint, finish });
+        if (typeof r !== 'string') {
+          this.persist();
+          this.flow.refreshChips();
+        }
+        return r;
+      },
+      testDrive: (carId) => {
+        this.closeShowroom();
+        const prev = this.save.garage.selected;
+        // a test drive borrows the car on the skidpad; the garage stays as it was
+        this.testDriveRestore = prev;
+        history.replaceState(null, '', `?car=${carId}`);
+        void this.startSession({ mode: 'practice', location: 'skidpad', event: 'free' });
+      },
+      upgrades: (uid) => {
+        const o = this.save.garage.cars.find((c) => c.uid === uid);
+        if (!o) return;
+        this.showroomUi.hide();
+        this.showroom.active = true;
+        this.upgrades.show(o);
+      },
+      close: () => {
+        this.closeShowroom();
+        this.goMenu(this.showroomFrom === 'select' ? 'modes' : 'main');
+      },
+    });
+    this.upgrades = new UpgradeShop(this.uiRoot, () => this.save, {
+      click: () => this.audio.click(),
+      toast: (m) => this.hud.toast(m),
+      changed: () => {
+        this.persist();
+        this.flow.refreshChips();
+      },
+      preview: (o, build) => {
+        const car = ownedToShowroom(o);
+        if (build) {
+          car.build = build;
+          car.key = `preview|${o.uid}|${JSON.stringify(build)}|${JSON.stringify(o.tune)}`;
+        }
+        void this.showroom.show(car);
+      },
+      install: async (o) => {
+        await this.showroom.show(ownedToShowroom(o));
+      },
+      paint: () => this.hud.toast('PAINT & LIVERY · coming with the garage (Section 4)'),
+      close: () => {
+        this.upgrades.hide();
+        this.showroomUi.show('mycars');
       },
     });
     this.menus.onClose = (to) => {
@@ -288,6 +362,7 @@ export class Game {
       if (this.state.is('drive')) this.pause();
       else if (this.state.is('paused') && this.menus.visible === 'pause') this.resume();
       else if (this.menus.visible === 'settings') this.menus.onClose?.(this.state.is('paused') ? 'pause' : 'menu');
+      else if (this.showroom.active) return;
       else if (this.state.is('menu')) {
         const v = this.flow.visible;
         this.goMenu(v === 'events' ? 'cars' : v === 'cars' ? 'modes' : 'main');
@@ -410,6 +485,7 @@ export class Game {
 
   goMenu(screen: string): void {
     this.shop?.hide();
+    if (this.showroom?.active) this.closeShowroom();
     if (!this.state.is('menu')) this.state.go('menu');
     this.menus.show(null);
     this.flow.show(screen);
@@ -419,8 +495,27 @@ export class Game {
   openShop(which: 'dealer' | 'skills'): void {
     if (!this.state.is('menu')) this.state.go('menu');
     this.flow.show(null);
-    if (which === 'dealer') this.shop.showDealer();
+    if (which === 'dealer') this.openShowroom('dealer');
     else this.shop.showSkills();
+  }
+
+  private testDriveRestore: string | null = null;
+
+  /** Update 4 §2: the 3D showroom for car select, the dealer and my cars */
+  openShowroom(mode: 'select' | 'dealer' | 'mycars'): void {
+    if (!this.state.is('menu')) this.state.go('menu');
+    this.flow.show(null);
+    this.menus.show(null);
+    this.showroomFrom = mode;
+    this.post.setScene(this.showroom.scene, this.showroom.camera);
+    this.showroomUi.show(mode);
+  }
+
+  private closeShowroom(): void {
+    this.showroomUi.hide();
+    this.upgrades.hide();
+    this.showroom.active = false;
+    this.post.setScene(this.scene, this.cam.camera);
   }
 
   private openSettingsFromMenu(): void {
@@ -463,6 +558,11 @@ export class Game {
 
   /** End the session normally: pay out and show results. */
   endSession(): void {
+    if (this.testDriveRestore !== null) {
+      // the test drive is over: hand the borrowed car back
+      history.replaceState(null, '', location.pathname);
+      this.testDriveRestore = null;
+    }
     if (!this.session) return this.goMenu('main');
     this.save.stats.timePlayed += this.sessionTime;
     if (this.vehicle) this.save.stats.carTime[this.vehicle.spec.id] = (this.save.stats.carTime[this.vehicle.spec.id] ?? 0) + this.sessionTime;
@@ -547,11 +647,13 @@ export class Game {
   private async ensureCar(): Promise<void> {
     const owned = this.currentCar();
     const carId = new URLSearchParams(location.search).get('car') ?? owned.carId;
-    const key = `${carId}|${owned.uid}`;
+    const testDrive = carId !== owned.carId;
+    const key = `${carId}|${owned.uid}|${testDrive ? '' : JSON.stringify(owned.parts) + JSON.stringify(owned.tune)}`;
     if (this.vehicle && this.carKey === key) return;
     const def = carDef(carId);
     const visual = await buildCarVisual(def, owned.paint.body, (owned.paint.finish as PaintFinish) ?? 'metallic');
-    const spec = carPhysics(carId);
+    // the car as built: installed parts and tune (a borrowed test-drive car is stock)
+    const spec = testDrive ? carPhysics(carId) : applyBuild(carPhysics(carId), owned.parts, owned.tune);
     if (visual.kind === 'glb') fitPhysicsToModel(spec, visual.dims);
     if (this.view) {
       this.scene.remove(this.view.group);
@@ -559,6 +661,7 @@ export class Game {
     }
     if (this.save.perks.quickShift) spec.gearbox.shiftTime *= 0.7;
     this.vehicle = new Vehicle(spec, this.save.settings.assists);
+    this.vehicle.engine.powerScale = this.save.settings.gameplay.arcadePower;
     this.view = new CarView(this.vehicle, visual, { stance: def.visual.stance ?? 0 });
     this.scene.add(this.view.group);
     this.carKey = key;
@@ -678,6 +781,7 @@ export class Game {
     this.post.composer.setPixelRatio(1);
     this.cam.camera.aspect = w / h;
     this.cam.camera.updateProjectionMatrix();
+    this.showroom?.setAspect(w / h);
   }
 
   // ---------------------------------------------------------------- loop
@@ -789,8 +893,13 @@ export class Game {
         surface: surf === 'gravel' || surf === 'dirt' ? 'gravel' : surf === 'grass' ? 'grass' : 'tarmac',
         limiter: v.engine.limiterCut,
         bov: v.engine.bovEvent,
+        upshift: v.engine.upshiftEvent,
       });
       v.engine.bovEvent = 0;
+      if (v.engine.upshiftEvent && this.state.is('drive')) this.cam.nudge(Math.min(1, v.engine.load + 0.2));
+      v.engine.upshiftEvent = 0;
+      if (v.launchEvent && this.state.is('drive')) this.cam.kick(v.launchEvent);
+      v.launchEvent = 0;
       if (slip > 0.4 && this.state.is('drive')) this.input.rumble(0.05, slip * 0.25, 60);
 
       if (this.state.is('drive')) {
@@ -809,6 +918,7 @@ export class Game {
       // animate the sea
       this.seaT += dt;
       for (const o of this.animated) (o.userData as { animate: (t: number) => void }).animate(this.seaT);
+      this.speedLines.update(dt, Math.max(0, t.forwardSpeed), this.state.is('drive'));
       this.desat = Math.max(0, this.desat - dt * 1.5);
       this.post.setLook(this.env.look.night, t.speed, this.desat);
     }
@@ -818,6 +928,10 @@ export class Game {
     if (this.saveTimer > 30 && this.state.is('drive')) {
       this.saveTimer = 0;
       this.persist();
+    }
+    if (this.showroom.active) {
+      this.showroom.update(dt);
+      this.showroomUi.pollPad();
     }
     this.post.draw();
   }

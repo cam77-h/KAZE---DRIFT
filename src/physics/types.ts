@@ -43,6 +43,8 @@ export interface EngineSpec {
   /** audio profile id, see src/audio */
   sound: string;
   cylinders: number;
+  /** cooling capacity (1 = stock). Long flat-out runs heat the engine and fade power a little; more cooling, less fade. */
+  cooling?: number;
 }
 
 export interface GearboxSpec {

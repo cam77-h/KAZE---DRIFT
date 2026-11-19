@@ -1,32 +1,93 @@
 {
-  "street": {
-    "id": "street", "name": "Street", "mu": 1.12, "longRatio": 1.0,
-    "peakSlipAngle": 0.16, "peakSlipRatio": 0.12, "falloff": 0.22, "shapeE": -0.4,
-    "loadSensitivity": 0.1, "rolling": 0.013, "smoke": "#dcdcdc"
-  },
-  "sport": {
-    "id": "sport", "name": "Sport", "mu": 1.22, "longRatio": 1.0,
-    "peakSlipAngle": 0.15, "peakSlipRatio": 0.11, "falloff": 0.2, "shapeE": -0.4,
-    "loadSensitivity": 0.09, "rolling": 0.012, "smoke": "#e0e0e0"
-  },
-  "semislick": {
-    "id": "semislick", "name": "Semi-slick", "mu": 1.42, "longRatio": 1.0,
-    "peakSlipAngle": 0.13, "peakSlipRatio": 0.1, "falloff": 0.27, "shapeE": -0.2,
-    "loadSensitivity": 0.08, "rolling": 0.012, "smoke": "#e8e8e8"
-  },
-  "drift": {
-    "id": "drift", "name": "Drift-spec", "mu": 1.28, "longRatio": 0.96,
-    "peakSlipAngle": 0.19, "peakSlipRatio": 0.13, "falloff": 0.14, "shapeE": -0.6,
-    "loadSensitivity": 0.08, "rolling": 0.012, "smoke": "#f2f2f2"
-  },
-  "rally": {
-    "id": "rally", "name": "Rally", "mu": 1.12, "longRatio": 1.0,
-    "peakSlipAngle": 0.18, "peakSlipRatio": 0.14, "falloff": 0.16, "shapeE": -0.5,
-    "loadSensitivity": 0.08, "rolling": 0.014, "smoke": "#cfc8bb"
-  },
-  "snow": {
-    "id": "snow", "name": "Snow", "mu": 1.0, "longRatio": 1.0,
-    "peakSlipAngle": 0.18, "peakSlipRatio": 0.14, "falloff": 0.15, "shapeE": -0.5,
-    "loadSensitivity": 0.08, "rolling": 0.015, "smoke": "#d6dde4"
-  }
+ "street": {
+  "id": "street",
+  "name": "Street",
+  "mu": 1.12,
+  "longRatio": 1.0,
+  "peakSlipAngle": 0.16,
+  "peakSlipRatio": 0.12,
+  "falloff": 0.22,
+  "shapeE": -0.4,
+  "loadSensitivity": 0.1,
+  "rolling": 0.0104,
+  "smoke": "#dcdcdc"
+ },
+ "sport": {
+  "id": "sport",
+  "name": "Sport",
+  "mu": 1.22,
+  "longRatio": 1.0,
+  "peakSlipAngle": 0.15,
+  "peakSlipRatio": 0.11,
+  "falloff": 0.2,
+  "shapeE": -0.4,
+  "loadSensitivity": 0.09,
+  "rolling": 0.0096,
+  "smoke": "#e0e0e0"
+ },
+ "semislick": {
+  "id": "semislick",
+  "name": "Semi-slick",
+  "mu": 1.42,
+  "longRatio": 1.0,
+  "peakSlipAngle": 0.13,
+  "peakSlipRatio": 0.1,
+  "falloff": 0.27,
+  "shapeE": -0.2,
+  "loadSensitivity": 0.08,
+  "rolling": 0.0096,
+  "smoke": "#e8e8e8"
+ },
+ "drift": {
+  "id": "drift",
+  "name": "Drift-spec",
+  "mu": 1.28,
+  "longRatio": 0.96,
+  "peakSlipAngle": 0.19,
+  "peakSlipRatio": 0.13,
+  "falloff": 0.14,
+  "shapeE": -0.6,
+  "loadSensitivity": 0.08,
+  "rolling": 0.0096,
+  "smoke": "#f2f2f2"
+ },
+ "rally": {
+  "id": "rally",
+  "name": "Rally",
+  "mu": 1.12,
+  "longRatio": 1.0,
+  "peakSlipAngle": 0.18,
+  "peakSlipRatio": 0.14,
+  "falloff": 0.16,
+  "shapeE": -0.5,
+  "loadSensitivity": 0.08,
+  "rolling": 0.0112,
+  "smoke": "#cfc8bb"
+ },
+ "snow": {
+  "id": "snow",
+  "name": "Snow",
+  "mu": 1.0,
+  "longRatio": 1.0,
+  "peakSlipAngle": 0.18,
+  "peakSlipRatio": 0.14,
+  "falloff": 0.15,
+  "shapeE": -0.5,
+  "loadSensitivity": 0.08,
+  "rolling": 0.012,
+  "smoke": "#d6dde4"
+ },
+ "slick": {
+  "id": "slick",
+  "name": "Race Slick",
+  "mu": 1.5,
+  "longRatio": 1.0,
+  "peakSlipAngle": 0.11,
+  "peakSlipRatio": 0.09,
+  "falloff": 0.3,
+  "shapeE": -0.1,
+  "loadSensitivity": 0.07,
+  "rolling": 0.0105,
+  "smoke": "#ececec"
+ }
 }

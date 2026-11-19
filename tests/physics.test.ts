@@ -50,10 +50,10 @@ describe('tire model', () => {
 
 describe('drivetrain', () => {
   const spec = carPhysics('sakura_s15');
-  it('stock S15 makes about 245 hp', () => {
+  it('stock S15 makes about 300 hp (Update 4 tuning, before arcadePower)', () => {
     const p = peakPower(spec.engine);
-    expect(p.hp).toBeGreaterThan(230);
-    expect(p.hp).toBeLessThan(260);
+    expect(p.hp).toBeGreaterThan(280);
+    expect(p.hp).toBeLessThan(330);
   });
   it('rev limiter cuts fuel above the limiter', () => {
     const e = new Engine(spec.engine, spec.gearbox);

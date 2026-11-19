@@ -14,6 +14,8 @@ export interface AudioFrame {
   surface: 'tarmac' | 'gravel' | 'grass';
   limiter: boolean;
   bov: number;
+  /** 1 on the frame of an upshift: exhaust blip / crackle */
+  upshift?: number;
 }
 
 export class CarAudio {
@@ -37,6 +39,11 @@ export class CarAudio {
   private gravelGain!: GainNode;
   private windGain!: GainNode;
   private windLp!: BiquadFilterNode;
+  private roarGain!: GainNode;
+  private roarLp!: BiquadFilterNode;
+  private whooshGain!: GainNode;
+  private whooshBp!: BiquadFilterNode;
+  private lastBoost = 0;
   private noise!: AudioBuffer;
   private cylinders = 4;
   started = false;
@@ -146,6 +153,26 @@ export class CarAudio {
     this.windGain.gain.value = 0;
     wind.connect(this.windLp).connect(this.windGain).connect(this.fxBus);
 
+    // tire roar: low road noise that grows with speed on tarmac
+    const roar = this.loopNoise();
+    this.roarLp = ctx.createBiquadFilter();
+    this.roarLp.type = 'lowpass';
+    this.roarLp.frequency.value = 220;
+    this.roarLp.Q.value = 0.9;
+    this.roarGain = ctx.createGain();
+    this.roarGain.gain.value = 0;
+    roar.connect(this.roarLp).connect(this.roarGain).connect(this.fxBus);
+
+    // turbo spool whoosh: band-passed air noise while boost is building
+    const whoosh = this.loopNoise();
+    this.whooshBp = ctx.createBiquadFilter();
+    this.whooshBp.type = 'bandpass';
+    this.whooshBp.Q.value = 1.6;
+    this.whooshBp.frequency.value = 2000;
+    this.whooshGain = ctx.createGain();
+    this.whooshGain.gain.value = 0;
+    whoosh.connect(this.whooshBp).connect(this.whooshGain).connect(this.engineBus);
+
     this.started = true;
     this.applySettings();
   }
@@ -192,15 +219,24 @@ export class CarAudio {
     this.intakeBp.frequency.setTargetAtTime(300 + f.rpm * 0.18, t, 0.05);
     this.intakeGain.gain.setTargetAtTime(load * 0.05 * (0.4 + f.rpm / 8000), t, 0.05);
     this.turbo.frequency.setTargetAtTime(2200 + f.boost * 5200, t, 0.08);
-    this.turboGain.gain.setTargetAtTime(f.boost * f.boost * 0.018, t, 0.1);
+    this.turboGain.gain.setTargetAtTime(f.boost * f.boost * 0.032, t, 0.1);
+    // whoosh follows boost and how fast it is rising
+    const rise = Math.max(0, f.boost - this.lastBoost) * 60;
+    this.lastBoost = f.boost;
+    this.whooshBp.frequency.setTargetAtTime(1400 + f.boost * 3200, t, 0.08);
+    this.whooshGain.gain.setTargetAtTime(Math.min(0.16, f.boost * load * 0.07 + rise * 0.05), t, 0.06);
     if (f.bov > 0.3) this.blowOff(f.bov);
+    if (f.upshift) this.shiftBlip();
     const squeal = f.surface === 'tarmac' ? Math.min(0.32, Math.max(0, f.slip - 0.05) * 0.5) : 0;
     this.squealGain.gain.setTargetAtTime(squeal, t, 0.05);
     this.squealBp.frequency.setTargetAtTime(900 + f.speed * 10 + f.slip * 300, t, 0.08);
     const crunch = f.surface !== 'tarmac' ? Math.min(0.25, f.speed / 40) : 0;
     this.gravelGain.gain.setTargetAtTime(crunch, t, 0.08);
-    this.windLp.frequency.setTargetAtTime(300 + f.speed * 25, t, 0.2);
-    this.windGain.gain.setTargetAtTime(Math.min(0.2, (f.speed / 70) ** 2 * 0.2), t, 0.2);
+    this.windLp.frequency.setTargetAtTime(300 + f.speed * 32, t, 0.2);
+    this.windGain.gain.setTargetAtTime(Math.min(0.3, (f.speed / 65) ** 2 * 0.3), t, 0.2);
+    const roar = f.surface === 'tarmac' ? Math.min(0.22, (f.speed / 70) * 0.22) : 0;
+    this.roarGain.gain.setTargetAtTime(roar, t, 0.15);
+    this.roarLp.frequency.setTargetAtTime(140 + f.speed * 4, t, 0.2);
   }
 
   private blowOff(amount: number): void {
@@ -214,11 +250,47 @@ export class CarAudio {
     bp.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.35);
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.22 * amount, ctx.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.34 * amount, ctx.currentTime + 0.02);
     g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.45);
     s.connect(bp).connect(g).connect(this.fxBus);
     s.start();
     s.stop(ctx.currentTime + 0.5);
+  }
+
+  /** Upshift: a short exhaust thump with a couple of crackles as the ignition cuts. */
+  private shiftBlip(): void {
+    const ctx = this.ctx!;
+    const t0 = ctx.currentTime;
+    const o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(140, t0);
+    o.frequency.exponentialRampToValueAtTime(55, t0 + 0.09);
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 700;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.22, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.12);
+    o.connect(lp).connect(g).connect(this.engineBus);
+    o.start(t0);
+    o.stop(t0 + 0.14);
+    for (let i = 0; i < 2; i++) {
+      const at = t0 + 0.03 + i * 0.045 + Math.random() * 0.02;
+      const n = ctx.createBufferSource();
+      n.buffer = this.noise;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 900 + Math.random() * 700;
+      bp.Q.value = 3;
+      const ng = ctx.createGain();
+      ng.gain.setValueAtTime(0.0001, at);
+      ng.gain.exponentialRampToValueAtTime(0.16, at + 0.004);
+      ng.gain.exponentialRampToValueAtTime(0.0001, at + 0.05);
+      n.connect(bp).connect(ng).connect(this.engineBus);
+      n.start(at, Math.random());
+      n.stop(at + 0.06);
+    }
   }
 
   impact(strength: number, material: string): void {

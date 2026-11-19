@@ -79,8 +79,8 @@
    ],
    "reverse": 3.382,
    "final": 4.083,
-   "shiftTime": 0.16,
-   "efficiency": 0.9
+   "shiftTime": 0.08,
+   "efficiency": 0.85
   },
   "clutchTorque": 470,
   "diff": {
@@ -128,36 +128,37 @@
     "torqueCurve": [
      [
       800,
-      95
+      105
      ],
      [
       2000,
-      118
+      130
      ],
      [
       3500,
-      138
+      152
      ],
      [
       5200,
-      149
+      164
      ],
      [
       6600,
-      140
+      154
      ],
      [
       7600,
-      118
+      130
      ],
      [
       8000,
-      100
+      110
      ]
     ],
     "engineBrake": 50,
     "sound": "i4na",
-    "cylinders": 4
+    "cylinders": 4,
+    "turbo": null
    },
    "gearbox": {
     "ratios": [
@@ -168,9 +169,9 @@
      0.861
     ],
     "reverse": 3.4,
-    "final": 4.3,
-    "shiftTime": 0.17,
-    "efficiency": 0.9
+    "final": 5.04,
+    "shiftTime": 0.08,
+    "efficiency": 0.85
    },
    "clutchTorque": 260,
    "diff": {
@@ -255,7 +256,13 @@
   "price": 0,
   "level": 1,
   "archetype": "80s hatchback",
-  "signature": "Panda two-tone, light and tossable"
+  "signature": "Panda two-tone, light and tossable",
+  "targets": {
+   "zeroTo100": 6.8,
+   "zeroTo200": null,
+   "topSpeed": 200
+  },
+  "year": 1985
  },
  "kumo_sedan": {
   "physics": {
@@ -270,36 +277,37 @@
     "torqueCurve": [
      [
       800,
-      170
+      204
      ],
      [
       2000,
-      205
+      246
      ],
      [
       3500,
-      232
+      278
      ],
      [
       4800,
-      240
+      288
      ],
      [
       6000,
-      222
+      266
      ],
      [
       6600,
-      200
+      240
      ],
      [
       7000,
-      180
+      216
      ]
     ],
     "engineBrake": 60,
     "sound": "i6na",
-    "cylinders": 6
+    "cylinders": 6,
+    "turbo": null
    },
    "gearbox": {
     "ratios": [
@@ -310,9 +318,9 @@
      0.75
     ],
     "reverse": 3.4,
-    "final": 4.1,
-    "shiftTime": 0.17,
-    "efficiency": 0.9
+    "final": 4.754,
+    "shiftTime": 0.08,
+    "efficiency": 0.85
    },
    "clutchTorque": 330,
    "diff": {
@@ -364,7 +372,13 @@
   "price": 20000,
   "level": 1,
   "archetype": "4-door sport sedan",
-  "signature": "Cheap, heavy, open diff: a proper beater"
+  "signature": "Cheap, heavy, open diff: a proper beater",
+  "targets": {
+   "zeroTo100": 6.5,
+   "zeroTo200": null,
+   "topSpeed": 210
+  },
+  "year": 1992
  },
  "sakura_18": {
   "physics": {
@@ -379,35 +393,35 @@
     "torqueCurve": [
      [
       800,
-      140
+      154
      ],
      [
       2000,
-      180
+      198
      ],
      [
       3000,
-      238
-     ],
-     [
-      4000,
       262
      ],
      [
+      4000,
+      288
+     ],
+     [
       5200,
-      256
+      282
      ],
      [
       6000,
-      240
+      264
      ],
      [
       6800,
-      215
+      237
      ],
      [
       7400,
-      175
+      193
      ]
     ],
     "engineBrake": 65,
@@ -430,9 +444,9 @@
      0.759
     ],
     "reverse": 3.4,
-    "final": 4.11,
-    "shiftTime": 0.17,
-    "efficiency": 0.9
+    "final": 4.814,
+    "shiftTime": 0.08,
+    "efficiency": 0.85
    },
    "tireFront": "sport",
    "tireRear": "sport",
@@ -472,7 +486,13 @@
   "price": 35000,
   "level": 1,
   "archetype": "S-chassis hatch",
-  "signature": "Pop-up lights, the drift scene's favourite hatch"
+  "signature": "Pop-up lights, the drift scene's favourite hatch",
+  "targets": {
+   "zeroTo100": 5.8,
+   "zeroTo200": 19,
+   "topSpeed": 235
+  },
+  "year": 1991
  },
  "hoshi_gt": {
   "physics": {
@@ -487,36 +507,37 @@
     "torqueCurve": [
      [
       800,
-      180
+      252
      ],
      [
       2000,
-      240
+      336
      ],
      [
       3500,
-      285
+      399
      ],
      [
       4800,
-      300
+      420
      ],
      [
       6000,
-      285
+      399
      ],
      [
       6800,
-      265
+      371
      ],
      [
       7200,
-      245
+      343
      ]
     ],
     "engineBrake": 70,
     "sound": "v6na",
-    "cylinders": 6
+    "cylinders": 6,
+    "turbo": null
    },
    "gearbox": {
     "ratios": [
@@ -528,9 +549,9 @@
      0.79
     ],
     "reverse": 3.4,
-    "final": 3.54,
-    "shiftTime": 0.17,
-    "efficiency": 0.9
+    "final": 4.621,
+    "shiftTime": 0.08,
+    "efficiency": 0.85
    },
    "clutchTorque": 480,
    "tireFront": "sport",
@@ -577,7 +598,13 @@
   "price": 45000,
   "level": 1,
   "archetype": "90s sports coupe",
-  "signature": "Deep V6 note, wide rear haunches"
+  "signature": "Deep V6 note, wide rear haunches",
+  "targets": {
+   "zeroTo100": 5.2,
+   "zeroTo200": 16,
+   "topSpeed": 250
+  },
+  "year": 1993
  },
  "sento_rs": {
   "physics": {
@@ -592,31 +619,31 @@
     "torqueCurve": [
      [
       800,
-      120
+      138
      ],
      [
       2000,
-      170
+      196
      ],
      [
       3200,
-      225
+      259
      ],
      [
       4400,
-      240
+      276
      ],
      [
       5600,
-      232
+      267
      ],
      [
       6600,
-      210
+      242
      ],
      [
       7400,
-      170
+      196
      ]
     ],
     "engineBrake": 55,
@@ -640,9 +667,9 @@
      0.81
     ],
     "reverse": 3.4,
-    "final": 4.3,
-    "shiftTime": 0.17,
-    "efficiency": 0.9
+    "final": 4.475,
+    "shiftTime": 0.08,
+    "efficiency": 0.85
    },
    "tireFront": "sport",
    "tireRear": "sport",
@@ -685,7 +712,13 @@
   "price": 55000,
   "level": 1,
   "archetype": "compact sport coupe",
-  "signature": "Light, short and eager to rotate"
+  "signature": "Light, short and eager to rotate",
+  "targets": {
+   "zeroTo100": 5.5,
+   "zeroTo200": 18,
+   "topSpeed": 230
+  },
+  "year": 1994
  },
  "kaze_r7_87": {
   "physics": {
@@ -700,35 +733,35 @@
     "torqueCurve": [
      [
       800,
-      130
+      182
      ],
      [
       2000,
-      190
+      266
      ],
      [
       3000,
-      245
+      343
      ],
      [
       4000,
-      265
+      371
      ],
      [
       5500,
-      255
+      357
      ],
      [
       6500,
-      232
+      325
      ],
      [
       7000,
-      215
+      301
      ],
      [
       7400,
-      180
+      252
      ]
     ],
     "engineBrake": 45,
@@ -751,9 +784,9 @@
      0.72
     ],
     "reverse": 3.4,
-    "final": 4.1,
-    "shiftTime": 0.17,
-    "efficiency": 0.9
+    "final": 4.618,
+    "shiftTime": 0.08,
+    "efficiency": 0.85
    },
    "tireFront": "sport",
    "tireRear": "sport",
@@ -797,10 +830,60 @@
   "price": 60000,
   "level": 5,
   "archetype": "80s rotary coupe",
-  "signature": "Pop-up headlights and a rotary brap"
+  "signature": "Pop-up headlights and a rotary brap",
+  "targets": {
+   "zeroTo100": 5.0,
+   "zeroTo200": 15,
+   "topSpeed": 255
+  },
+  "year": 1987
  },
  "sakura_s15": {
-  "physics": {},
+  "physics": {
+   "engine": {
+    "torqueCurve": [
+     [
+      800,
+      188
+     ],
+     [
+      1500,
+      223
+     ],
+     [
+      2500,
+      275
+     ],
+     [
+      3500,
+      335
+     ],
+     [
+      4800,
+      355
+     ],
+     [
+      5600,
+      353
+     ],
+     [
+      6400,
+      340
+     ],
+     [
+      7000,
+      313
+     ],
+     [
+      7600,
+      256
+     ]
+    ]
+   },
+   "gearbox": {
+    "final": 5.537
+   }
+  },
   "visual": {
    "model": "s15",
    "defaultPaint": "#c8102e",
@@ -812,7 +895,13 @@
   "price": 80000,
   "level": 8,
   "archetype": "S-chassis coupe",
-  "signature": "The car everyone learns to drift in"
+  "signature": "The car everyone learns to drift in",
+  "targets": {
+   "zeroTo100": 4.9,
+   "zeroTo200": 15,
+   "topSpeed": 250
+  },
+  "year": 1999
  },
  "raiden_34": {
   "physics": {
@@ -828,35 +917,35 @@
     "torqueCurve": [
      [
       800,
-      190
+      361
      ],
      [
       2000,
-      260
+      494
      ],
      [
       3000,
-      330
+      627
      ],
      [
       4400,
-      392
+      745
      ],
      [
       5500,
-      380
+      722
      ],
      [
       6800,
-      340
+      646
      ],
      [
       7500,
-      300
+      570
      ],
      [
       8000,
-      260
+      494
      ]
     ],
     "engineBrake": 75,
@@ -880,9 +969,9 @@
      0.79
     ],
     "reverse": 3.4,
-    "final": 3.55,
-    "shiftTime": 0.17,
-    "efficiency": 0.9
+    "final": 4.459,
+    "shiftTime": 0.08,
+    "efficiency": 0.85
    },
    "clutchTorque": 620,
    "frontDiff": {
@@ -940,6 +1029,12 @@
   "price": 150000,
   "level": 15,
   "archetype": "90s GT coupe (AWD)",
-  "signature": "Round quad taillights, AWD grip monster"
+  "signature": "Round quad taillights, AWD grip monster",
+  "targets": {
+   "zeroTo100": 4.3,
+   "zeroTo200": 13,
+   "topSpeed": 280
+  },
+  "year": 1999
  }
 }

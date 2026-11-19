@@ -93,7 +93,8 @@ export class CarView {
       this.lastVel.copy(v.velocity);
       acc.applyQuaternion(this.tmpQ.copy(v.quaternion).invert());
       const targetRoll = THREE.MathUtils.clamp(acc.x * 0.004, -0.04, 0.04);
-      const targetPitch = THREE.MathUtils.clamp(-acc.z * 0.003, -0.03, 0.03);
+      // nose dives under braking; under hard acceleration (a launch) the rear squats a little more
+      const targetPitch = THREE.MathUtils.clamp(-acc.z * (acc.z > 0 ? 0.0045 : 0.003), -0.04, 0.03);
       const k = 1 - Math.exp(-dt * 6);
       this.bodyRoll += (targetRoll - this.bodyRoll) * k;
       this.bodyPitch += (targetPitch - this.bodyPitch) * k;

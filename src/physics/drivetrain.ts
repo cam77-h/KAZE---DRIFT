@@ -41,11 +41,20 @@ export class Engine {
   torque = 0;
   /** effective throttle after the limiter and shifts */
   load = 0;
+  /** hidden "arcade power" knob (settings.gameplay.arcadePower, default 1.15) */
+  powerScale = 1;
   /** blow-off valve event flag, consumed by audio */
   bovEvent = 0;
+  /** set on every upshift (1), consumed by audio and the camera */
+  upshiftEvent = 0;
+  /** two-step launch: the turbo spools against the limiter (set by the vehicle while staged) */
+  antiLag = false;
+  /** engine heat 0..1 (oil & cooling upgrades slow it); fades power by up to 6% */
+  heat = 0;
   private lastThrottle = 0;
   private limiterTime = 0;
   private reverseTimer = 0;
+  private sinceUpshift = 10;
 
   constructor(
     public spec: EngineSpec,
@@ -72,6 +81,7 @@ export class Engine {
   shift(to: number): void {
     const clamped = Math.max(-1, Math.min(this.gearCount, to));
     if (clamped === this.gear) return;
+    if (clamped > this.gear && this.gear >= 1) this.upshiftEvent = 1;
     this.gear = clamped;
     this.shiftTimer = this.box.shiftTime;
     this.clutchLocked = false;
@@ -105,7 +115,7 @@ export class Engine {
     if (s.turbo) {
       const tb = s.turbo;
       const avail = smoothstep(tb.spoolRpm, tb.fullBoostRpm, rpm);
-      const target = thr * avail;
+      const target = (this.antiLag ? 1 : thr) * avail;
       const tau = target > this.boost ? tb.lag : tb.lag * 0.35;
       this.boost += (target - this.boost) * Math.min(1, dt / tau);
       if (this.lastThrottle > 0.6 && throttle < 0.2 && this.boost > 0.45) this.bovEvent = this.boost;
@@ -114,7 +124,11 @@ export class Engine {
     this.lastThrottle = throttle;
     this.load = thr;
 
-    const combustion = thr * curveTorque(s, rpm) * boostFactor;
+    // heat builds over minutes at high load and rpm, and bleeds off when cruising
+    const work = thr * (rpm / s.redlineRpm);
+    this.heat = Math.min(1, Math.max(0, this.heat + (dt * (work - 0.55)) / (150 * (s.cooling ?? 1))));
+    const fade = s.cooling !== undefined && s.cooling > 50 ? 1 : 1 - 0.06 * this.heat;
+    const combustion = thr * curveTorque(s, rpm) * boostFactor * this.powerScale * fade;
     const friction = (1 - thr) * s.engineBrake * Math.min(1.2, rpm / s.redlineRpm) + 8;
     this.torque = combustion - friction;
     return this.torque;
@@ -129,7 +143,8 @@ export class Engine {
    * Automatic gearbox. Holds the gear while the car is sliding so a drift does not upshift
    * itself out of the power band, and uses brake-at-standstill for reverse.
    */
-  autoShift(dt: number, opts: { throttle: number; brake: number; handbrake: number; speed: number; forwardSpeed: number; sliding: boolean; wheelRpm: number }): void {
+  autoShift(dt: number, opts: { throttle: number; brake: number; handbrake: number; speed: number; forwardSpeed: number; sliding: boolean; wheelRpm: number; roadRpm: number }): void {
+    this.sinceUpshift += dt;
     if (this.shiftTimer > 0) return;
     const s = this.spec;
     const g = this.gear;
@@ -157,19 +172,22 @@ export class Engine {
       this.shift(1);
       return;
     }
-    const rpmFromWheels = opts.wheelRpm;
-    const upAt = s.redlineRpm * 0.96;
+    // decisions use road speed: spinning wheels say nothing about which gear fits
+    const rpmFromWheels = opts.roadRpm;
+    const upAt = s.redlineRpm * 0.95;
     if (g < this.gearCount && opts.throttle > 0.3) {
-      const wantUp = this.rpm > upAt && rpmFromWheels > upAt * 0.92;
-      if (wantUp && (!opts.sliding || this.limiterHold > 0.4)) {
+      const wantUp = this.rpm > upAt && (rpmFromWheels > upAt * 0.85 || this.limiterHold > 0.25);
+      if (wantUp && this.sinceUpshift > 0.5 && (!opts.sliding || this.limiterHold > 0.4)) {
         this.shift(g + 1);
+        this.sinceUpshift = 0;
+        this.limiterTime = 0;
         return;
       }
     }
     // never kick down while the rears are locked by the handbrake or the car is sliding,
     // the wheel speed says nothing about road speed then
     const holdGear = opts.handbrake > 0.1 || (opts.sliding && this.rpm > s.redlineRpm * 0.3);
-    if (g > 1 && !holdGear) {
+    if (g > 1 && !holdGear && this.sinceUpshift > 1.2) {
       const lowerRpm = (rpmFromWheels * this.ratio(g - 1)) / this.ratio(g);
       const downAt = opts.throttle > 0.5 ? s.redlineRpm * 0.5 : s.redlineRpm * 0.32;
       if (rpmFromWheels < downAt && lowerRpm < s.redlineRpm * 0.88) this.shift(g - 1);

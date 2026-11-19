@@ -35,6 +35,19 @@ export class ChaseCamera {
     this.shake = Math.min(1.5, this.shake + strength);
   }
 
+  // kick: a damped spring that pushes the camera back (launch) or nudges it (upshift)
+  private kickX = 0;
+  private kickV = 0;
+  private time = 0;
+  /** launch: the camera is thrown back and the FOV punches out */
+  kick(strength: number): void {
+    this.kickV += 3.2 * strength;
+  }
+  /** upshift: a small forward-back nudge as the next gear bites */
+  nudge(strength: number): void {
+    this.kickV += 1.1 * strength;
+  }
+
   snap(): void {
     this.initialized = false;
   }
@@ -95,7 +108,24 @@ export class ChaseCamera {
       cam.lookAt(this.look);
     }
 
-    // shake: impacts + a little road rumble at speed
+    // launch kick / shift nudge spring (critically damped-ish, ~0.4 s)
+    this.time += dt;
+    const kw = 11;
+    // semi-implicit substeps: stable at any frame time
+    for (let left = Math.min(dt, 0.25); left > 1e-6; left -= 1 / 120) {
+      const h = Math.min(left, 1 / 120);
+      this.kickV += (-kw * kw * this.kickX - 2 * 0.75 * kw * this.kickV) * h;
+      this.kickX += this.kickV * h;
+    }
+    if (!Number.isFinite(this.kickX)) this.kickX = this.kickV = 0;
+    if (Math.abs(this.kickX) > 1e-4) {
+      // the camera drops back along the view direction (and a touch down on the hood/bumper cams)
+      const back = this.tmp.copy(this.look).sub(cam.position).normalize();
+      cam.position.addScaledVector(back, -this.kickX * (this.mode >= 2 ? 0.25 : 0.9));
+      if (this.mode >= 2) cam.position.addScaledVector(up, -this.kickX * 0.05);
+    }
+
+    // shake: impacts, road rumble, and a high-frequency buzz above 150 km/h
     this.shake = Math.max(0, this.shake - dt * 2.5);
     const rumble = Math.min(1, speed / 60) * 0.004;
     const s = (this.shake * 0.08 + rumble) * this.shakeScale;
@@ -104,10 +134,23 @@ export class ChaseCamera {
       cam.position.y += (Math.random() - 0.5) * s;
       cam.position.z += (Math.random() - 0.5) * s;
     }
+    const fast = smoothstep(150 / 3.6, 300 / 3.6, speed) * this.shakeScale;
+    if (fast > 0) {
+      const t = this.time;
+      const a = fast * (this.mode >= 2 ? 0.012 : 0.022);
+      cam.position.x += (Math.sin(t * 71.3) * 0.6 + Math.sin(t * 113.7 + 1.3) * 0.4) * a;
+      cam.position.y += (Math.sin(t * 89.1 + 0.4) * 0.6 + Math.sin(t * 131.9 + 2.1) * 0.4) * a;
+    }
 
+    // FOV opens up to +12° with speed, and punches out on a launch kick
     const baseFov = this.mode === 3 ? 72 : this.mode === 2 ? 66 : 58;
-    const fov = baseFov + Math.min(speed, 70) * 0.2;
-    cam.fov += (fov - cam.fov) * Math.min(1, dt * 3);
+    const fov = baseFov + 12 * Math.pow(Math.min(1, speed / 75), 1.25) + Math.max(0, this.kickX) * 6;
+    cam.fov += (fov - cam.fov) * Math.min(1, dt * 4);
     cam.updateProjectionMatrix();
   }
+}
+
+function smoothstep(a: number, b: number, x: number): number {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
 }

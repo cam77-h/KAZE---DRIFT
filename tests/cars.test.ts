@@ -24,8 +24,8 @@ describe('every car is drivable', () => {
         t += DT;
         expect(Number.isFinite(car.position.x + car.position.z + car.engine.rpm)).toBe(true);
       }
-      // from a 50 hp-per-tonne beater to an AWD twin-turbo: 0-100 between 4 and 13 s
-      expect(t).toBeGreaterThan(4);
+      // from a light 1.6 to an AWD twin-turbo: 0-100 between 3 and 13 s (exact targets: accel.test.ts)
+      expect(t).toBeGreaterThan(3);
       expect(t).toBeLessThan(13);
       expect(Math.abs(car.position.x)).toBeLessThan(1.5);
     });

@@ -133,7 +133,10 @@ export function fitPhysicsToModel(spec: CarPhysicsSpec, d: ModelDims): void {
   spec.cgToRear = wb * (1 - frontShare);
   spec.trackFront = THREE.MathUtils.clamp(d.trackFront, 1.2, 1.85);
   spec.trackRear = THREE.MathUtils.clamp(d.trackRear, 1.2, 1.85);
-  spec.wheelRadius = THREE.MathUtils.clamp(d.wheelRadius, 0.26, 0.38);
+  const radius = THREE.MathUtils.clamp(d.wheelRadius, 0.26, 0.38);
+  // keep the overall gearing per km/h, so the tuned acceleration and top speed still hold
+  spec.gearbox.final *= radius / spec.wheelRadius;
+  spec.wheelRadius = radius;
   spec.length = d.length;
   spec.width = Math.min(2.0, d.width);
   spec.height = d.height;

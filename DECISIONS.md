@@ -76,3 +76,69 @@ Choices made where the spec left room, one line of reasoning each. Newest at the
 - **The skill tree has 11 perks with 15 ranks**: Style 5 ranks, Money 5, Mechanic 5. Each rank costs 1 SP, and perks unlock top-down within a branch.
 - **Every 5th level is a milestone:** a sticker set unlocks (stored in `save.unlocks.stickers`) with a full-screen celebration. The free part arrives with the Section 8 parts system.
 - **The Garage menu opens the skill tree for now**; the 3D garage (Section 8) will put it in a tab.
+
+## Update 4
+
+- **`KAZE_DRIFT_UPDATE_3.md` does not exist and `reference/` holds no upgrade-screen image**, so the screens are designed in the game's own style (dark navy panels, paper-white type, sodium-orange and red accents).
+
+### Section 1: acceleration and the feel of speed
+
+- **Targets come from tuning, not a fudge factor.** Each car keeps realistic drag (CdA 0.58–0.68). Its final drive is set so redline in top gear lands on the target top speed (short gearing). Its torque curve is then scaled by a coarse scan. `tests/tools/tune_accel.ts` does both. Scales: AE 1.10, Kumo 1.20, Sakura 18 1.10, Sento 1.15, Hoshi 1.40, R7 1.40, S15 1.25, Raiden 1.90. The Raiden's AWD 4.3 s needs the most.
+- **Times are measured with a staged launch** (`src/physics/performance.ts`): brake and throttle held for 1.5 s, then the brake comes off. The clock starts as it does. The same function feeds the dealer cards, so the numbers on screen are the ones the test checks.
+- **Launch control meters the clutch, not the throttle.** Cutting throttle at a standstill made the engine bog and lose boost. Now the engine sits on its launch rpm (on boost for turbo cars), and the clutch passes only the torque the driven tyres can take, with a slip feedback trim. After the clutch locks, a wheelspin limiter runs through 2nd gear. Steering more than 25%, the handbrake, lifting or a slide end it, so drift entries are untouched.
+- **Staged launch = two-step:** stopped with brake and throttle held, the clutch stays out, a soft limiter holds the launch rpm, and the turbo builds boost. A green LAUNCH light shows on the HUD.
+- **Auto-shift decides on road speed, not wheel speed.** Wheelspin had been triggering upshift/downshift hunting. Other fixes: a 1.2 s downshift lockout after an upshift, a 0.5 s gap between upshifts (a limiter bounce had cascaded 2→4→5), and the box syncs revs to the new gear during the 80 ms shift.
+- **TCS is off whenever drift assist is on or the car is sliding.** Drift assist is on by default, so TCS only acts for players who turn drift assist off.
+- **`arcadePower` (default 1.15) is a hidden setting** in `settings.gameplay`. It multiplies every engine's torque, and all targets and the acceleration test assume 1.15. To change it, edit the saved settings (localStorage `kaze-drift-save`) or the default in `src/core/settings.ts`. The test would then need re-tuning.
+- **NA cars no longer inherit the base turbo.** `cars.json` deep-merges each car over `_base`, which has a turbo, so the AE, Kumo and Hoshi were secretly boosted. `"turbo": null` now removes it (`deepMerge` treats null as delete). All three still hit their targets.
+- **Rolling resistance −20%** (street 0.0104) and **drivetrain efficiency 0.85** for every gearbox, as the update asks.
+- **Model-fitted wheel radius scales the final drive** (`fitPhysicsToModel`), so a car's overall gearing per km/h, and so its tuned times, stay the same when its 3D model has different-sized wheels.
+- **Economy rescaled for the faster cars:** faster drifts score more points per minute, so the pacing test's scripted driver earned about 2.3× more. Open Road ¥/point 0.075 → 0.03, Drift Track 0.055 → 0.022, XP 1 per 12 → 1 per 29 points. The pacing targets hold again.
+- **Speed feel:**
+  - FOV: base + 12° × (speed / 270 km/h)^1.25, plus a punch on a launch kick.
+  - Shake: two-frequency, from 150 km/h, full at 300 km/h, scaled by the camera-shake setting.
+  - Motion blur: now on from the Medium preset.
+  - Speed lines: a 2D canvas overlay, fading in from 120 km/h.
+  - Upshifts: an exhaust thump with two crackles, plus a camera nudge.
+  - Turbo: an audible spool whoosh (band-passed air that tracks boost and boost rise), a louder whistle and blow-off.
+  - Launch: the camera kick, and more rear squat under hard acceleration.
+  - Road noise: tyre roar on tarmac.
+- **The 20 s Playwright capture runs on game time** (`tests/smoke/update4_accel.cjs`). Software GL in CI renders far slower than real time, so wall-clock seconds would undercount.
+- **The fully upgraded 2.8–3.6 s check** is added to `tests/accel.test.ts` with the Section 3 parts system, which defines "fully upgraded".
+
+### Section 2: showroom car select
+
+- **One showroom for three jobs:** Car Select (after choosing a mode), Dealer, and My Cars (the main menu's GARAGE button). The skill tree moved to its own SKILLS button.
+- **The showroom is a separate Three.js scene drawn through the same post stack** (`PostStack.setScene`). The open-road world stays loaded behind it, so going for a drive needs no reload.
+- **The room:**
+  - A real mirror floor (`Reflector`) under a dark, slightly rough tint, so the reflection reads as polished concrete, not glass.
+  - A brushed turntable with a sodium-orange rim light, and light strips on the walls.
+  - A warm key spot, cool and warm rim spots, and `RoomEnvironment` reflections.
+- **Cars sit on their real suspension:** each one is a `Vehicle` settled for 150 steps on a flat world, then drawn with the normal `CarView`. Stance, ride height and wheel offsets come from the same code as in the drive. At most six built cars are cached, and the neighbours of the current car are preloaded.
+- **The dealer's paint preview** has 12 colours and five finishes. Buying uses the previewed colour.
+- **Test Drive takes the car to the skidpad** on a borrowed basis (`?car=`). The garage selection is untouched and restored when the session ends.
+- **Model years** are fictional and set in `cars.json`.
+
+### Section 3: upgrade shop
+
+- **The catalogue is code, not JSON** (`src/garage/parts.ts`). Each option carries a small `apply(spec)`, so the shop, the rating, the stat bars, the acceleration test and the car on the road all use the same `applyBuild`. Order: conversions first, then engine, platform, drivetrain, tires, aero.
+- **Stacked engine parts have diminishing returns:** the engine category's combined torque gain is scaled by 0.8, and by less for engines already above 360 hp/t. Without this, a full build multiplied power by 2.2–2.6× (a 1,800 hp Raiden).
+- **"Fully upgraded" for the 2.8–3.6 s check** means:
+  - the top performance tier in every slot, with race slicks and the widebody's widest tires
+  - no conversions (no swap, no aspiration change), as the spec treats those as separate choices
+  The seven RWD cars land at 3.0–3.5 s.
+- **AWD exception:** the AWD Raiden reaches 2.1 s, because AWD on slicks is grip-bound at about 1.3 g. Detuning it to 2.8 s would make the AWD layout pointless. The test holds AWD to a 1.9 s floor instead and keeps the ±10% band for RWD cars.
+- **Race slicks have μ 1.5,** about 23% over Sport tires, in line with arcade expectations rather than real-world 1.7+.
+- **Aero catalogue values are in "kit units",** ×12 = Cl·A in m². A full race kit is about 1 m² of downforce: about +15% load at 200 km/h.
+- **The rating is analytic and instant,** so hovering a part ticks the number immediately. Components: power-to-weight, lateral grip with downforce, braking, aero and launch traction. Raw values above 600 are compressed so heavy builds spread across S1–R. The honest 0–100 and top speed beside it come from the physics run.
+- **Tuning maps onto the physics we have:**
+  - Camber peaks at −1.5° front and −1° rear, giving up to 2% grip.
+  - Toe-out at the front sharpens turn-in; toe-in at the rear steadies the rear.
+  - Caster adds steering speed.
+  - Springs, ride height, damping, ARBs, brake balance and pressure, final drive, diff locks and downforce act directly.
+- **Mechanical balance** combines roll-stiffness distribution, the rear/front grip ratio, weight distribution and diff lock, calibrated so a stock S15 reads about 0.57.
+- **Parts are owned per car:** each car keeps an inventory, so reinstalling a part it already bought is free. That makes presets and switching builds cheap, as in the reference game. Removing a part (back to Stock) is free and refunds nothing.
+- **FWD swaps are not offered:** every car in the roster is front-engine RWD or AWD, and an FR→FF swap is not "sensible" for a drift game. RWD↔AWD is offered on every car.
+- **Engine heat:** stock engines lose up to 6% power after minutes of flat-out running. Oil & Cooling upgrades slow this, and the race pack removes it.
+- **Build codes** are `KZ1-` plus base64url JSON of car, parts, tune and paint. Import checks every slot and option against the catalogue.
+- **Quick Upgrade** is a greedy planner: it repeatedly buys the best rating gain per yen (plus style preferences for Drift and Grip) under the class ceiling and the player's money and level, then shows the plan and total before buying.

@@ -2,11 +2,11 @@
 
 A JDM street-culture driving game for the browser: tight drift handling, Japanese-inspired locations and a deep garage. Built with Vite, TypeScript (strict) and Three.js. The full design spec is in [`KAZE_DRIFT_SPEC.md`](KAZE_DRIFT_SPEC.md); progress and the next steps are in [`NEXT_STEPS.md`](NEXT_STEPS.md).
 
-**Status: Update 2, steps 1–4 of 7 done** (see [`KAZE_DRIFT_UPDATE_2.md`](KAZE_DRIFT_UPDATE_2.md) and [`NEXT_STEPS.md`](NEXT_STEPS.md)):
-- **Cars:** eight, seven of them imported 3D models.
-- **Modes:** Open Road (a 9 km loop with traffic), Drift Track (four venues: Drift Attack, Time Attack and Tandem), and Practice.
-- **Progression:** a skill chain, money, levels, a dealer and a skill tree.
-- **Still to build:** the 3D garage with part installs, and the records screen.
+**Status: Update 4, sections 1–3 of 7 done** (see [`KAZE_DRIFT_UPDATE_4.mr`](KAZE_DRIFT_UPDATE_4.mr) and [`NEXT_STEPS.md`](NEXT_STEPS.md)):
+- **Speed:** every car is tuned to the update's acceleration table (tested), with a staged launch, a turbo whoosh, speed lines, FOV and shake.
+- **Showroom:** a 3D showroom for Car Select, the Dealer (with live paint preview) and My Cars, with class, rating, stat bars and simulated 0–100.
+- **Upgrades & Tuning:** conversions, engine, platform, drivetrain, tires and aero parts that change the physics. Also tuning locked behind race parts, a mechanical balance meter, Quick Upgrade, build presets and `KZ1-` build codes.
+- **Still to build:** visible part installs and the engine bay, the Akagiri Touge, multiplayer.
 
 ## Run it
 
@@ -27,6 +27,9 @@ Then open the URL Vite prints (usually http://localhost:5173).
 | `npm run preview` | Serve the built `dist/` locally |
 | `npm test` | Vitest unit tests (physics, tires, save system, track, input) |
 | `npm run smoke` | Update 2 check: menus → Open Road → results, screenshots to `screenshots/update-2/`. Needs `npx vite --port 5199` running |
+| `node tests/smoke/update4_accel.cjs` | Staged launch and 20 s flat out (game time); screenshots to `screenshots/update-4/` |
+| `node tests/smoke/update4_showroom.cjs` | Dealer, My Cars, Upgrades & Tuning and Car Select; screenshots to `screenshots/update-4/` |
+| `npx tsx tests/tools/accel.ts` | Print every car's simulated 0–100, 0–200 and top speed against its targets |
 | `/model-viewer.html` | Every car and traffic model on a turntable, with bounding boxes and wheel pivots (`?m=<id>`) |
 
 `dist/` is a plain static site with relative paths, so it runs from any static host, including a GitHub Pages project subpath.

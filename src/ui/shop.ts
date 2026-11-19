@@ -2,6 +2,7 @@ import { CARS, CAR_ORDER, carName, carTagline } from '../data';
 import { ECONOMY, formatYen } from '../core/progression';
 import type { OwnedCar, SaveData } from '../core/save';
 import { peakPower } from '../physics/drivetrain';
+import { ARCADE_POWER, measure } from '../physics/performance';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, html?: string): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
@@ -39,7 +40,7 @@ export function sellValue(save: SaveData, car: OwnedCar): number {
   return Math.round(car.paid * r);
 }
 
-export function buyCar(save: SaveData, carId: string): OwnedCar | string {
+export function buyCar(save: SaveData, carId: string, paint?: { body: string; finish: OwnedCar['paint']['finish'] }): OwnedCar | string {
   const def = CARS[carId];
   if (!def) return 'Unknown car.';
   if (save.profile.level < def.level) return `Reach level ${def.level} first.`;
@@ -50,7 +51,7 @@ export function buyCar(save: SaveData, carId: string): OwnedCar | string {
     carId,
     parts: {},
     tune: {},
-    paint: { body: def.visual.defaultPaint, finish: def.visual.defaultFinish ?? 'metallic', wheels: '#c9ccd1', calipers: '#d21f2b' },
+    paint: { body: paint?.body ?? def.visual.defaultPaint, finish: paint?.finish ?? def.visual.defaultFinish ?? 'metallic', wheels: '#c9ccd1', calipers: '#d21f2b' },
     livery: [],
     mileage: 0,
     paid: def.price,
@@ -132,16 +133,19 @@ export class Shop {
     this.head(s, 'DEALER', 'Kaze Motors', 'ディーラー');
     const sv = this.save();
     const grid = el('div', 'dealer-grid');
-    const maxHp = Math.max(...CAR_ORDER.map((id) => peakPower(CARS[id].physics.engine).hp));
+    const maxHp = Math.max(...CAR_ORDER.map((id) => peakPower(CARS[id].physics.engine).hp)) * ARCADE_POWER;
+    const perfCells: [string, HTMLElement][] = [];
     for (const id of CAR_ORDER) {
       const d = CARS[id];
-      const hp = peakPower(d.physics.engine).hp;
+      const hp = peakPower(d.physics.engine).hp * ARCADE_POWER;
       const owned = sv.garage.cars.filter((c) => c.carId === id);
       const locked = sv.profile.level < d.level;
       const card = el('div', 'dcard' + (locked ? ' locked' : ''));
       card.innerHTML = `<div class="dtop"><h3>${carName(id)}</h3><span class="price">${d.price ? formatYen(d.price) : 'STARTER'}</span></div>
         <div class="jp">${d.archetype.toUpperCase()} · ${d.physics.layout}</div><p>${carTagline(id)}</p>
-        <div class="stats"><span>POWER ${Math.round(hp)} hp</span>${bar((hp / maxHp) * 100)}<span>WEIGHT ${d.physics.mass} kg</span>${bar(100 - (d.physics.mass - 900) / 8)}<span>PWR / WT</span>${bar((hp / d.physics.mass) * 420)}</div>`;
+        <div class="stats"><span>POWER ${Math.round(hp)} hp</span>${bar((hp / maxHp) * 100)}<span>WEIGHT ${d.physics.mass} kg</span>${bar(100 - (d.physics.mass - 900) / 8)}<span>PWR / WT</span>${bar((hp / d.physics.mass) * 330)}</div>
+        <div class="perf"><span>0–100 <b>…</b></span><span>TOP <b>…</b></span></div>`;
+      perfCells.push([id, card.querySelector('.perf') as HTMLElement]);
       const row = el('div', 'drow');
       if (locked) row.append(el('span', 'lock', `LEVEL ${d.level}`));
       else {
@@ -178,6 +182,18 @@ export class Shop {
     }
     s.append(grid);
     s.classList.add('on');
+    // the numbers come from the physics (the same run the acceleration test uses), one car per tick
+    const fill = () => {
+      const next = perfCells.shift();
+      if (!next) return;
+      const [id, cell] = next;
+      const p = measure(CARS[id].physics);
+      const kmh = this.save().settings.gameplay.units !== 'mph';
+      const top = kmh ? `${Math.round(p.topSpeed)} km/h` : `${Math.round(p.topSpeed / 1.609)} mph`;
+      cell.innerHTML = `<span>${kmh ? '0–100' : '0–62'} <b>${p.zeroTo100.toFixed(1)} s</b></span><span>TOP <b>${top}</b></span>`;
+      setTimeout(fill, 0);
+    };
+    setTimeout(fill, 30);
   }
 
   showSkills(): void {
