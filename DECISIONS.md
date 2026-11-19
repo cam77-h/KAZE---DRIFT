@@ -192,3 +192,13 @@ Choices made where the spec left room, one line of reasoning each. Newest at the
 - **Real pitch and roll:** in sim mode the car body shows only the simulated pitch and roll; the extra visual lean is off.
 - **Aero lift:** sim cars without aero get a little lift at speed (Cl·A up to 0.06 per axle).
 - **Launch control needs an assist:** it now only engages with TCS or drift assist on. With everything off, full throttle at a standstill does a burnout, as the doc requires.
+
+### Step 2: drivetrain (§4)
+
+- **Every clutch now has 35% headroom over its tuned peak torque** (with arcadePower). Update 4's torque scaling had pushed the Raiden (about 860 N·m) past its 620 N·m clutch, and the Kumo, Hoshi, R7 and S15 close to theirs. The Raiden's clutch slipped at full throttle in every gear: it sat at the limiter in 6th, its launch was chaotic, and more torque made it slower. The tuner had compensated with a 1.9× torque scale. With the clutch fixed, the Raiden's torque is retuned to 0.63× of that (1.2× the original curve), and it hits 4.3 s and 13 s in both models.
+- **Sim LSD:** every LSD type takes power lock on throttle and coast lock off throttle (the old 2-way type ignored coast). Preload adds on top. Lock ≥ 100% means fully locked, so preload no longer matters at 100/100, as the doc describes. Open and welded are unchanged.
+- **Clutch heat (sim):** slip power heats the clutch. Above 250 °C its capacity fades (to 60% at most), and it cools toward 60 °C.
+- **Clutch kick:** this already worked from the physics: the clutch pedal opens the clutch, the engine revs, and releasing dumps the stored energy into the rears. It is now tested on the S15 (2nd gear, 60 km/h, kick at 6,000+ rpm → rear slip over 0.3, drift angle over 12°).
+- **Rev-matching on downshift** is the existing shift synchroniser, which matches revs to the new gear during the shift time.
+- **Gear hold in a drift (auto box):** unchanged and already in place. No upshift while sliding unless the limiter has been bouncing for 0.4 s; no downshift while sliding or on the handbrake.
+- **`tests/accel.test.ts` checks every car's targets in both physics models.**

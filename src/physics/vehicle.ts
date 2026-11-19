@@ -163,6 +163,8 @@ export class Vehicle {
   /** last known-good state for the NaN guard */
   private safe = { p: new Vector3(), q: new Quaternion(), t: -1 };
   nanResets = 0;
+  /** clutch temperature (°C), sim only */
+  clutchTemp = 60;
 
   constructor(spec: CarPhysicsSpec, assists: AssistSettings = defaultAssists(), model: PhysicsModel = 'classic') {
     this.spec = spec;
@@ -478,7 +480,9 @@ export class Vehicle {
     const autoClutch = Math.max(smooth01((wheelRpm - wheelStart) / 1500), rpmTerm * rpmTerm * rpmTerm);
     let engagement = (1 - clamp01(rawInput.clutch)) * autoClutch;
     if (eng.shifting || G === 0 || this.launchStaged) engagement = 0;
-    let capacity = engagement * s.clutchTorque;
+    // sim: a slipping clutch heats up and fades above ~250 °C
+    const clutchFade = sim ? Math.max(0.6, 1 - Math.max(0, this.clutchTemp - 250) / 400) : 1;
+    let capacity = engagement * s.clutchTorque * clutchFade;
     const launchClutch = this.launchClutchPhase && !this.launchStaged && G !== 0 && !eng.shifting;
     // soft two-step limiter: full throttle up to the launch rpm, fading out over the next 400 rpm
     if (launchClutch) throttle = clamp01(1 - (eng.rpm - target) / 400);
@@ -657,6 +661,7 @@ export class Vehicle {
       const need = Te - (Ie * (eng.omega - prevOmega)) / dt;
       if (Math.abs(need) > capacity * 1.05) eng.clutchLocked = false;
     } else if (mode === 'slip') {
+      if (sim) this.clutchTemp += (Math.abs(clutchTorque * (eng.omega - drivenOmega * G)) * dt) / 2500;
       const before = eng.omega - drivenOmega * G;
       eng.omega += ((Te - clutchTorque) / Ie) * dt;
       const after = eng.omega - newDriven * G;
@@ -673,6 +678,7 @@ export class Vehicle {
       eng.omega += (sync - eng.omega) * Math.min(1, dt / Math.max(0.02, s.gearbox.shiftTime * 0.4));
     }
     eng.omega = Math.max(eng.omega, 300 * (Math.PI / 30));
+    if (sim) this.clutchTemp += (60 - this.clutchTemp) * Math.min(1, dt * 0.05);
 
     // ---- final tire forces with the updated wheel speeds ----
     let rearSlide = 0;
@@ -804,6 +810,16 @@ export class Vehicle {
     const Ib = Ia;
     const delta = a.omega - b.omega;
     let limit: number;
+    if (this.model === 'sim' && d.type !== 'open' && d.type !== 'welded') {
+      // clutch-type LSD: preload + power lock % on throttle, coast lock % off it; 100% = locked
+      const lock = torqueIn >= 0 ? d.accelLock : d.decelLock;
+      limit = lock >= 0.999 ? Infinity : d.preload + Math.abs(torqueIn) * lock;
+      const Ired = (Ia * Ib) / (Ia + Ib);
+      const tq = Math.max(-limit, Math.min(limit, (delta * Ired) / dt));
+      a.omega -= (tq * dt) / Ia;
+      b.omega += (tq * dt) / Ib;
+      return;
+    }
     switch (d.type) {
       case 'welded':
         limit = Infinity;
