@@ -202,3 +202,21 @@ Choices made where the spec left room, one line of reasoning each. Newest at the
 - **Rev-matching on downshift** is the existing shift synchroniser, which matches revs to the new gear during the shift time.
 - **Gear hold in a drift (auto box):** unchanged and already in place. No upshift while sliding unless the limiter has been bouncing for 0.4 s; no downshift while sliding or on the handbrake.
 - **`tests/accel.test.ts` checks every car's targets in both physics models.**
+
+### Step 3: steering and input (§5)
+
+- **One input pipeline, in `src/input/steering.ts`:** raw device value → deadzone (rescaled so full lock is still reachable) → gamma → steering speed (a rate-limited virtual steering wheel, with a separate return speed) → filter (an exponential smoothing time of 0–120 ms) → speed sensitivity (max lock down to 35% at about 150 km/h). The doc's percentages map onto those ranges. `Input` now only reports raw values and the device in use; `Game` runs the pipeline with the car's speed and slide state.
+- **The drift profile is the gamepad default everywhere,** because every mode in this game is a drift mode. Pad Grip stays selectable.
+- **Classic physics** gets the same pipeline but no speed sensitivity, because it keeps its own speed-sensitive steering assist.
+- **The countersteer assist runs only on the sim model.** Free steering = the angle that points the front wheels along the front axle's velocity (body velocity plus yaw rate × the CG-to-front-axle distance), clamped to the lock. Assisted angle = free + input × (lock ∓ free), so the stick can still reach either full lock. The final angle blends raw and assisted by strength × slide blend. The slide blend ramps from 6° to 10° of rear-axle slip. It only aims the wheels along the travel direction and never adds yaw of its own.
+- **The sim model's steering rack turns at 9 rad/s** (classic 5 rad/s); the input pipeline does the smoothing.
+- **Ackermann is adjustable (sim):** 0 = parallel, 1 = geometric Ackermann for the car's wheelbase and track. Caster tilts the outside front wheel's top inward when steering (caster × sin of the steer angle, in degrees of camber).
+- **Wheels:**
+  - Detected by Gamepad API id (G29/G920/T300/Fanatec/Moza…, or forced on/off in Settings).
+  - Steering is 1:1: the car's steering-wheel rotation = lock × steering ratio (default 13:1). A 900° wheel reaches full lock on a stock 35° car and 99% with a 70° angle kit.
+  - Pedals are calibrated axes (rest/full) with an inversion toggle. Defaults follow the common "+1 released, −1 pressed" layout.
+  - No force feedback: browsers don't expose force-feedback effects for wheels through the Gamepad API (only dual-rumble on some pads).
+- **The §5 "Done when" test** uses a drift-prepared S15: 60° angle kit, locked 2-way diff, drift tires, −6.5° front camber. The doc's skidpad drift implies a drift setup, and Section 7 turns this into the Drift Base preset.
+  - A bot using only throttle and a stick limited to ±0.25 holds 30–45° for over 10 s with the 70% assist.
+  - With the assist off, the same inputs spin the car.
+  - The bot is a PD controller on drift angle; the rate term stands in for a player reacting to the car's rotation.

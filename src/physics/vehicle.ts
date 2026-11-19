@@ -288,10 +288,34 @@ export class Vehicle {
     // roll: + when the car's left side drops
     const rollDeg = (Math.asin(Math.max(-1, Math.min(1, left.y))) * -180) / Math.PI;
     const side = w.left ? 1 : -1;
-    const camber = w.camberStatic - gain * travel + side * rollDeg;
+    let camber = w.camberStatic - gain * travel + side * rollDeg;
+    // caster: steering tilts the outside front wheel's top inward (more negative camber)
+    if (w.front) camber -= side * ({ ...defaultAlignment(), ...(this.spec.alignment ?? {}) }).caster * Math.sin(w.steer);
     w.st.camberDeg = camber;
     // a left wheel with negative camber leans its top to the right (toward the car)
     w.st.leanRight = (side * -camber * Math.PI) / 180;
+  }
+
+  /** last computed free-steering angle (rad, + = right), for the telemetry overlay */
+  freeSteerAngle = 0;
+
+  /** steer angle that points the front wheels along the front axle's velocity (rad, + = right) */
+  private freeSteer(fwd: Vector3, left: Vector3, up: Vector3): number {
+    const yaw = this.angularVelocity.dot(up);
+    // front axle velocity = body velocity + yaw × r (r = forward × cgToFront): yaw left (+) moves the nose left
+    const vf = this.velocity.dot(fwd);
+    const vl = this.velocity.dot(left) + yaw * this.spec.cgToFront;
+    return Math.atan2(-vl, Math.max(0.5, vf));
+  }
+
+  /** 0..1: how much the rear is sliding (rear slip angle 6° → 10°) */
+  private slideBlend(fwd: Vector3, left: Vector3, up: Vector3, speed: number): number {
+    if (speed < 3) return 0;
+    const yaw = this.angularVelocity.dot(up);
+    const vf = this.velocity.dot(fwd);
+    const vl = this.velocity.dot(left) - yaw * this.spec.cgToRear;
+    const rearSlip = Math.abs(Math.atan2(vl, Math.max(0.5, Math.abs(vf))));
+    return Math.max(0, Math.min(1, (rearSlip - 0.105) / 0.07));
   }
 
   get yaw(): number {
@@ -438,19 +462,45 @@ export class Vehicle {
       if (!counter) lockFactor = 1 - Math.min(speed, 60) / 160;
     }
     let steerTarget = steerIn * s.steerLock * lockFactor;
-    if (a.driftAssist > 0 && speed > 4 && vF > 0) {
+    if (sim) {
+      // §5.3 countersteer assist: the "free steering" angle points the front wheels along the front
+      // axle's velocity (zero front slip), like a wheel spinning freely through the driver's hands.
+      // Stick centred = the car holds its slide; the stick adds or removes angle from there.
+      const k = (a.countersteer ?? 0) * this.slideBlend(fwd, left, up, speed);
+      if (k > 0 && vF > 0) {
+        const lock = s.steerLock;
+        const free = Math.max(-lock, Math.min(lock, this.freeSteer(fwd, left, up)));
+        const toward = steerIn >= 0 ? lock - free : lock + free;
+        const assisted = free + steerIn * toward;
+        steerTarget = steerIn * lock * (1 - k) + assisted * k;
+      }
+      this.freeSteerAngle = this.freeSteer(fwd, left, up);
+    } else if (a.driftAssist > 0 && speed > 4 && vF > 0) {
       // counter-steer help: point the front wheels along the direction of travel
       const help = a.driftAssist * 0.75 * driftAngle;
       steerTarget = Math.max(-s.steerLock, Math.min(s.steerLock, steerTarget + help * (1 - Math.abs(steerIn) * 0.5)));
     }
-    const steerRate = 5.0;
+    const steerRate = sim ? 9.0 : 5.0;
     this.steerAngle += clamp(steerTarget - this.steerAngle, -steerRate * dt, steerRate * dt);
-    // Ackermann: inner wheel turns a little more
-    const ack = 0.12;
-    for (const w of this.wheels) {
-      if (!w.front) { w.steer = 0; continue; }
-      const inner = (this.steerAngle > 0 && !w.left) || (this.steerAngle < 0 && w.left);
-      w.steer = this.steerAngle * (inner ? 1 + ack : 1 - ack * 0.5);
+    if (sim) {
+      // adjustable Ackermann: 0 = parallel, 1 = full geometric Ackermann for the wheelbase and track
+      const ackSet = ({ ...defaultAlignment(), ...(s.alignment ?? {}) }).ackermann;
+      const L = s.cgToFront + s.cgToRear, d = this.steerAngle;
+      const R = Math.abs(d) > 1e-4 ? L / Math.tan(Math.abs(d)) : 1e9;
+      for (const w of this.wheels) {
+        if (!w.front) { w.steer = 0; continue; }
+        const inner = (d > 0 && !w.left) || (d < 0 && w.left);
+        const geo = Math.atan(L / Math.max(0.5, R + (inner ? -1 : 1) * s.trackFront * 0.5));
+        w.steer = Math.sign(d) * (Math.abs(d) * (1 - ackSet) + geo * ackSet);
+      }
+    } else {
+      // Ackermann: inner wheel turns a little more
+      const ack = 0.12;
+      for (const w of this.wheels) {
+        if (!w.front) { w.steer = 0; continue; }
+        const inner = (this.steerAngle > 0 && !w.left) || (this.steerAngle < 0 && w.left);
+        w.steer = this.steerAngle * (inner ? 1 + ack : 1 - ack * 0.5);
+      }
     }
     if (sim) {
       // static toe: + = toe-in (front of the wheel points toward the car's centre line)

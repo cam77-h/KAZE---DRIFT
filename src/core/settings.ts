@@ -1,4 +1,5 @@
 import { defaultAssists, expertAssists, type AssistSettings } from '../physics/types';
+import type { ProfileId, SteerProfile, WheelConfig } from '../input/steering';
 
 export type Action =
   | 'throttle'
@@ -65,6 +66,11 @@ export interface ControlSettings {
   /** keyboard steering speed (how fast digital steering ramps) */
   keyboardSteerSpeed: number;
   touchLayout: 'buttons' | 'tilt';
+  /** Update 5 §5.2: per-device steering profiles (missing fields fall back to the defaults) */
+  steerProfiles?: Partial<Record<ProfileId, Partial<SteerProfile>>>;
+  /** steering wheel: 'auto' detects common wheels by name */
+  wheelMode?: 'auto' | 'on' | 'off';
+  wheel?: Partial<WheelConfig>;
 }
 
 export interface GameplaySettings {

@@ -173,6 +173,8 @@ export interface CarPhysicsSpec {
   gripFront: number;
   gripRear: number;
   alignment?: Partial<AlignmentSpec>;
+  /** steering ratio (steering-wheel degrees per road-wheel degree), default 13 */
+  steerRatio?: number;
 }
 
 export interface DriverInput {
@@ -207,6 +209,8 @@ export interface AssistSettings {
   transmission: 'auto' | 'manual';
   /** a mechanical-damage option, off by default */
   damage: boolean;
+  /** Update 5 §5.3 (sim model): countersteer assist strength 0..1 (the input profile sets it) */
+  countersteer?: number;
 }
 
 export function defaultAssists(): AssistSettings {
